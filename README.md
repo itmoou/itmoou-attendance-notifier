@@ -26,11 +26,12 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 ### 핵심 특징
 
 - ⏰ **자동화된 스케줄링**: Azure Functions Timer Trigger 기반
-- 🔔 **실시간 알림**: Teams DM을 통한 즉각적인 개인 알림
+- 🤖 **Teams Bot 알림**: Bot Framework를 통한 Proactive Message 전송
 - 📧 **일일 리포트**: Outlook을 통한 전일 누적 리포트 발송
 - 🔐 **토큰 자동 관리**: Flex API Access Token 자동 갱신
 - 🏖️ **휴가자 제외**: 휴가 중인 직원은 알림 대상에서 자동 제외
 - ⚠️ **만료 경고**: Refresh Token 만료 2일 전 자동 경고
+- 💾 **Conversation 저장**: Azure Table Storage를 통한 사용자별 대화 관리
 
 ---
 
@@ -40,21 +41,21 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 
 | 시간 | 동작 | 대상 |
 |------|------|------|
-| **11:05** | 1차 알림 (Teams DM) | 출근 미체크자 |
-| **11:30** | 2차 최종 알림 (Teams DM) | 여전히 미체크자 |
+| **11:05** | 1차 알림 (Teams Bot DM) | 출근 미체크자 |
+| **11:30** | 2차 최종 알림 (Teams Bot DM) | 여전히 미체크자 |
 
 ### 2. 퇴근 누락 알림
 
 | 시간 | 동작 | 대상 |
 |------|------|------|
-| **20:30** | 1차 알림 (Teams DM) | 퇴근 미체크자 |
-| **22:00** | 2차 최종 알림 (Teams DM) | 여전히 미체크자 |
+| **20:30** | 1차 알림 (Teams Bot DM) | 퇴근 미체크자 |
+| **22:00** | 2차 최종 알림 (Teams Bot DM) | 여전히 미체크자 |
 
 ### 3. 당일 누적 요약
 
 | 시간 | 동작 | 대상 |
 |------|------|------|
-| **22:10** | 당일 누락 요약 (Teams DM) | 오늘 누락 발생자 |
+| **22:10** | 당일 누락 요약 (Teams Bot DM) | 오늘 누락 발생자 |
 
 ### 4. Outlook 리포트
 
@@ -69,23 +70,29 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                  Azure Functions                        │
-│                   (Timer Trigger)                       │
+│          (Timer Trigger + HTTP Trigger)                 │
 └─────────────────────────────────────────────────────────┘
                           │
                           ├─────────────────────────┐
                           │                         │
                 ┌─────────▼─────────┐     ┌────────▼────────┐
-                │   Flex OpenAPI    │     │ Microsoft Graph │
-                │   (근태 데이터)     │     │  API (알림)      │
+                │   Flex OpenAPI    │     │  Teams Bot +    │
+                │   (근태 데이터)     │     │ Microsoft Graph │
                 └───────────────────┘     └─────────────────┘
                           │                         │
                           ├─────────┬───────────────┤
                           │         │               │
-                    ┌─────▼────┐ ┌──▼────────┐ ┌──▼─────────┐
-                    │ 직원 정보  │ │ Teams DM  │ │  Outlook   │
-                    │ 근태 기록  │ │  (실시간)  │ │ (일일리포트)│
-                    │ 휴가 정보  │ └───────────┘ └────────────┘
-                    └──────────┘
+                    ┌─────▼────┐ ┌──▼──────────┐ ┌──▼─────────┐
+                    │ 직원 정보 │ │  Teams Bot  │ │  Outlook   │
+                    │ 근태 기록 │ │  Proactive  │ │ (일일리포트)│
+                    │ 휴가 정보 │ │  Message    │ └────────────┘
+                    └──────────┘ └─────────────┘
+                                        │
+                                ┌───────▼────────┐
+                                │ Table Storage  │
+                                │ Conversation   │
+                                │   Reference    │
+                                └────────────────┘
 ```
 
 ---
@@ -97,10 +104,13 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 - **플랫폼**: Azure Functions (Timer Trigger)
 - **외부 API**:
   - Flex OpenAPI (근태 데이터)
-  - Microsoft Graph API (Teams, Outlook)
+  - Teams Bot Framework (Proactive Message)
+  - Microsoft Graph API (Outlook만 사용)
+- **저장소**: Azure Table Storage (Conversation Reference)
 - **인증**: 
   - Flex: Refresh Token 기반 (7일 유효, Access Token 자동 재발급)
-  - Microsoft: Azure AD Client Credentials Flow
+  - Teams Bot: Bot Framework Credentials
+  - Microsoft Graph: Azure AD Client Credentials Flow (Outlook만)
 
 ---
 

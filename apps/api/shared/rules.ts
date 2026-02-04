@@ -4,7 +4,6 @@
  */
 
 import { getFlexClient, Employee, AttendanceRecord } from './flexClient';
-import { getTeamsClient } from './teamsClient';
 
 export interface NotificationTarget {
   employee: Employee;
@@ -252,7 +251,7 @@ export function createDailySummaryMessage(
 }
 
 /**
- * Teams DM으로 알림 전송
+ * Teams Bot으로 알림 전송 (Proactive Message)
  * @param employees 알림 대상 직원 목록
  * @param messageGenerator 메시지 생성 함수
  */
@@ -260,12 +259,12 @@ export async function sendTeamsNotifications(
   employees: Employee[],
   messageGenerator: (name: string) => string
 ): Promise<void> {
-  const teamsClient = getTeamsClient();
+  const { sendBulkProactiveMessages } = await import('./teamsClient');
 
   const messages = employees
-    .filter(emp => emp.teamsUserId) // Teams User ID가 있는 경우만
+    .filter(emp => emp.email) // Email(UPN)이 있는 경우만
     .map(emp => ({
-      userId: emp.teamsUserId!,
+      userUpn: emp.email, // Email을 UPN으로 사용
       message: messageGenerator(emp.name),
     }));
 
@@ -274,5 +273,6 @@ export async function sendTeamsNotifications(
     return;
   }
 
-  await teamsClient.sendBulkDirectMessages(messages);
+  console.log(`[Rules] Teams Bot 알림 발송: ${messages.length}명`);
+  await sendBulkProactiveMessages(messages);
 }

@@ -1,6 +1,9 @@
 /**
  * Flex API Client
  * Flex OpenAPI 호출을 위한 클라이언트
+ * 
+ * Base URL: https://openapi.flex.team/v2
+ * Token URL: https://openapi.flex.team/v2/auth/realms/open-api/protocol/openid-connect/token
  */
 
 import axios, { AxiosInstance } from 'axios';
@@ -16,27 +19,45 @@ export interface Employee {
 export interface AttendanceRecord {
   employeeNumber: string;
   date: string; // YYYY-MM-DD
-  checkInTime?: string; // HH:mm:ss
-  checkOutTime?: string; // HH:mm:ss
-  status: 'present' | 'absent' | 'vacation' | 'sick_leave';
+  workBlocks: FlexWorkBlock[];
 }
 
+export interface FlexTimeOffUse {
+  // Flex time-off-uses의 "uses" 한 건(최소 필드만)
+  // 실제 필드명이 더 있으면 아래에 계속 추가하면 됨
+  timeOffType?: string;     // 예: "연차", "반차" 등 (있으면)
+  startAt?: string;         // ISO8601 (있으면)
+  endAt?: string;           // ISO8601 (있으면)
+  minutes?: number;         // 사용시간(분) (있으면)
+  status?: string;          // 승인상태 (있으면)
+}
+
+export interface UserTimeOffUses {
+  employeeNumber: string;
+  uses: FlexTimeOffUse[];
+}
 export interface VacationInfo {
   employeeNumber: string;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
-  type: 'annual' | 'sick' | 'other';
+  timeOffType: string; // "연차", "병가" 등
+}
+
+export interface AttendanceStatus {
+  employeeNumber: string;
+  date: string;
+  hasCheckIn: boolean; // 출근 여부
+  hasCheckOut: boolean; // 퇴근 여부
+  checkInTime?: string; // ISO 8601
+  checkOutTime?: string; // ISO 8601
+  isOnVacation: boolean; // 휴가 중 여부
 }
 
 class FlexClient {
   private client: AxiosInstance;
 
   constructor() {
-    const apiBase = process.env.FLEX_API_BASE;
-    
-    if (!apiBase) {
-      throw new Error('FLEX_API_BASE 환경변수가 설정되지 않았습니다.');
-    }
+    const apiBase = process.env.FLEX_API_BASE || 'https://openapi.flex.team/v2';
     
     this.client = axios.create({
       baseURL: apiBase,
@@ -73,122 +94,173 @@ class FlexClient {
   }
 
   /**
-   * 전체 직원 목록 조회
-   */
-  async getEmployees(): Promise<Employee[]> {
-    try {
-      console.log('[FlexClient] 직원 목록 조회');
-      
-      // TODO: 실제 Flex API endpoint로 변경
-      const response = await this.client.get('/api/v1/employees');
-      
-      return response.data.employees || [];
-    } catch (error) {
-      console.error('[FlexClient] 직원 목록 조회 실패:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 특정 직원의 근태 기록 조회
-   * @param employeeId 직원 ID
+   * 근태 기록 조회
+   * GET /users/work-schedules-with-work-clock/dates/{date}?employeeNumbers[]=xxx&employeeNumbers[]=yyy
    * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
    */
-  async getAttendanceRecord(employeeId: string, date: string): Promise<AttendanceRecord | null> {
+  async getWorkSchedules(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<FlexWorkSchedule[]> {
     try {
-      console.log(`[FlexClient] 근태 기록 조회: ${employeeId}, ${date}`);
-      
-      // TODO: 실제 Flex API endpoint로 변경
-      const response = await this.client.get(`/api/v1/attendance/${employeeId}`, {
-        params: { date },
-      });
-      
-      return response.data.attendance || null;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return null; // 기록 없음
-      }
+      console.log(`[FlexClient] 근태 기록 조회: ${date} (${employeeNumbers.length}명)`);
+
+      const response = await this.client.get(
+        `/users/work-schedules-with-work-clock/dates/${date}`,
+        {
+          params: {
+            'employeeNumbers[]': employeeNumbers,
+          },
+          paramsSerializer: {
+            indexes: null, // employeeNumbers[]=xxx 형식으로 전송
+          },
+        }
+      );
+
+      const schedules: FlexWorkSchedule[] = response.data || [];
+      console.log(`[FlexClient] 근태 기록 조회 완료: ${schedules.length}건`);
+      return schedules;
+    } catch (error) {
       console.error('[FlexClient] 근태 기록 조회 실패:', error);
       throw error;
     }
   }
 
   /**
-   * 여러 직원의 근태 기록 일괄 조회
-   * @param employeeIds 직원 ID 목록
+   * 휴가 정보 조회
+   * GET /users/time-off-uses/dates/{date}?employeeNumbers[]=xxx&employeeNumbers[]=yyy
    * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
    */
-  async getAttendanceRecords(employeeIds: string[], date: string): Promise<AttendanceRecord[]> {
+  async getTimeOffUses(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<FlexTimeOffUse[]> {
     try {
-      console.log(`[FlexClient] 근태 기록 일괄 조회: ${employeeIds.length}명, ${date}`);
-      
-      // TODO: 실제 Flex API endpoint로 변경
-      const response = await this.client.post('/api/v1/attendance/batch', {
-        employeeIds,
-        date,
+      console.log(`[FlexClient] 휴가 정보 조회: ${date} (${employeeNumbers.length}명)`);
+
+      const response = await this.client.get(`/users/time-off-uses/dates/${date}`, {
+        params: {
+          'employeeNumbers[]': employeeNumbers,
+        },
+        paramsSerializer: {
+          indexes: null,
+        },
       });
-      
-      return response.data.attendances || [];
+
+      const timeOffs: FlexTimeOffUse[] = response.data || [];
+      console.log(`[FlexClient] 휴가 정보 조회 완료: ${timeOffs.length}건`);
+      return timeOffs;
     } catch (error) {
-      console.error('[FlexClient] 근태 기록 일괄 조회 실패:', error);
+      console.error('[FlexClient] 휴가 정보 조회 실패:', error);
       throw error;
     }
   }
 
   /**
-   * 특정 날짜의 휴가자 목록 조회
+   * 근태 상태 분석 (누락 판정)
    * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
    */
-  async getVacations(date: string): Promise<VacationInfo[]> {
+  async getAttendanceStatuses(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<AttendanceStatus[]> {
     try {
-      console.log(`[FlexClient] 휴가자 목록 조회: ${date}`);
-      
-      // TODO: 실제 Flex API endpoint로 변경
-      const response = await this.client.get('/api/v1/vacations', {
-        params: { date },
+      // 1. 근태 기록 조회
+      const schedules = await this.getWorkSchedules(date, employeeNumbers);
+
+      // 2. 휴가 정보 조회
+      const timeOffs = await this.getTimeOffUses(date, employeeNumbers);
+
+      // 3. 휴가자 Set 생성
+      const vacationSet = new Set<string>();
+      timeOffs.forEach((timeOff) => {
+        if (
+          timeOff.startDate <= date &&
+          timeOff.endDate >= date
+        ) {
+          vacationSet.add(timeOff.employeeNumber);
+        }
       });
-      
-      return response.data.vacations || [];
+
+      // 4. 근태 상태 분석
+      const statuses: AttendanceStatus[] = schedules.map((schedule) => {
+        const isOnVacation = vacationSet.has(schedule.employeeNumber);
+
+        // "근무" 블록 찾기
+        const workBlock = schedule.workBlocks.find((block) => block.formName === '근무');
+
+        let hasCheckIn = false;
+        let hasCheckOut = false;
+        let checkInTime: string | undefined;
+        let checkOutTime: string | undefined;
+
+        if (workBlock) {
+          hasCheckIn = !!workBlock.blockFrom;
+          hasCheckOut = !!workBlock.blockTo;
+          checkInTime = workBlock.blockFrom;
+          checkOutTime = workBlock.blockTo;
+        }
+
+        return {
+          employeeNumber: schedule.employeeNumber,
+          date: schedule.date,
+          hasCheckIn,
+          hasCheckOut,
+          checkInTime,
+          checkOutTime,
+          isOnVacation,
+        };
+      });
+
+      console.log(`[FlexClient] 근태 상태 분석 완료: ${statuses.length}명`);
+      return statuses;
     } catch (error) {
-      console.error('[FlexClient] 휴가자 목록 조회 실패:', error);
+      console.error('[FlexClient] 근태 상태 분석 실패:', error);
       throw error;
     }
   }
 
   /**
-   * 특정 직원이 휴가 중인지 확인
-   * @param employeeId 직원 ID
-   * @param date 확인할 날짜 (YYYY-MM-DD)
+   * 출근 누락자 조회
+   * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 출근 누락 사원번호 목록
    */
-  async isOnVacation(employeeId: string, date: string): Promise<boolean> {
-    try {
-      const vacations = await this.getVacations(date);
-      return vacations.some(v => v.employeeId === employeeId);
-    } catch (error) {
-      console.error('[FlexClient] 휴가 여부 확인 실패:', error);
-      return false; // 에러 시 false 반환 (안전하게)
-    }
+  async getMissingCheckInEmployees(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<string[]> {
+    const statuses = await this.getAttendanceStatuses(date, employeeNumbers);
+
+    const missing = statuses
+      .filter((s) => !s.isOnVacation && !s.hasCheckIn)
+      .map((s) => s.employeeNumber);
+
+    console.log(`[FlexClient] 출근 누락: ${missing.length}/${statuses.length}명`);
+    return missing;
   }
 
   /**
-   * 날짜 범위의 근태 기록 조회 (리포트용)
-   * @param startDate 시작 날짜 (YYYY-MM-DD)
-   * @param endDate 종료 날짜 (YYYY-MM-DD)
+   * 퇴근 누락자 조회
+   * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 퇴근 누락 사원번호 목록
    */
-  async getAttendanceRecordsByDateRange(startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-    try {
-      console.log(`[FlexClient] 날짜 범위 근태 기록 조회: ${startDate} ~ ${endDate}`);
-      
-      // TODO: 실제 Flex API endpoint로 변경
-      const response = await this.client.get('/api/v1/attendance/range', {
-        params: { startDate, endDate },
-      });
-      
-      return response.data.attendances || [];
-    } catch (error) {
-      console.error('[FlexClient] 날짜 범위 근태 기록 조회 실패:', error);
-      throw error;
-    }
+  async getMissingCheckOutEmployees(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<string[]> {
+    const statuses = await this.getAttendanceStatuses(date, employeeNumbers);
+
+    const missing = statuses
+      .filter((s) => !s.isOnVacation && s.hasCheckIn && !s.hasCheckOut)
+      .map((s) => s.employeeNumber);
+
+    console.log(`[FlexClient] 퇴근 누락: ${missing.length}/${statuses.length}명`);
+    return missing;
   }
 }
 
