@@ -1,0 +1,44 @@
+# Flex 근태 누락 알림 시스템
+# local.settings.json 템플릿
+# 
+# 이 파일을 복사하여 local.settings.json으로 저장하고
+# 실제 값으로 수정하세요.
+
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "FUNCTIONS_WORKER_RUNTIME_VERSION": "18",
+    
+    "FLEX_API_BASE_URL": "https://your-flex-api-base-url.com",
+    "FLEX_ACCESS_TOKEN": "your_flex_access_token_here",
+    "FLEX_REFRESH_TOKEN": "your_flex_refresh_token_here",
+    "FLEX_CLIENT_ID": "your_flex_client_id",
+    "FLEX_CLIENT_SECRET": "your_flex_client_secret",
+    
+    "AZURE_TENANT_ID": "your_azure_tenant_id",
+    "AZURE_CLIENT_ID": "your_azure_client_id",
+    "AZURE_CLIENT_SECRET": "your_azure_client_secret",
+    "GRAPH_API_BASE_URL": "https://graph.microsoft.com/v1.0",
+    
+    "HR_EMAIL": "hr@itmoou.com",
+    "CEO_EMAIL": "ceo@itmoou.com",
+    
+    "CHECK_IN_TIME_1": "11:05",
+    "CHECK_IN_TIME_2": "11:30",
+    "CHECK_OUT_TIME_1": "20:30",
+    "CHECK_OUT_TIME_2": "22:00",
+    "DAILY_SUMMARY_TIME": "22:10",
+    "OUTLOOK_REPORT_TIME": "09:00",
+    
+    "REFRESH_TOKEN_WARNING_DAYS": "2",
+    "TZ": "Asia/Seoul",
+    "LOG_LEVEL": "info"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
