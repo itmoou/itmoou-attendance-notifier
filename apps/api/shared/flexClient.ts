@@ -7,14 +7,14 @@ import axios, { AxiosInstance } from 'axios';
 import { getFlexAccessToken } from './tokenManager';
 
 export interface Employee {
-  id: string;
+  employeeNumber: string;
   name: string;
   email: string;
   teamsUserId?: string; // Microsoft Teams User ID
 }
 
 export interface AttendanceRecord {
-  employeeId: string;
+  employeeNumber: string;
   date: string; // YYYY-MM-DD
   checkInTime?: string; // HH:mm:ss
   checkOutTime?: string; // HH:mm:ss
@@ -22,7 +22,7 @@ export interface AttendanceRecord {
 }
 
 export interface VacationInfo {
-  employeeId: string;
+  employeeNumber: string;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   type: 'annual' | 'sick' | 'other';
