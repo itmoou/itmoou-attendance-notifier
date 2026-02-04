@@ -11,11 +11,9 @@
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "FUNCTIONS_WORKER_RUNTIME_VERSION": "18",
     
-    "FLEX_API_BASE_URL": "https://your-flex-api-base-url.com",
-    "FLEX_ACCESS_TOKEN": "your_flex_access_token_here",
+    "FLEX_API_BASE": "https://api.flex.team",
+    "FLEX_TOKEN_URL": "https://api.flex.team/oauth/token",
     "FLEX_REFRESH_TOKEN": "your_flex_refresh_token_here",
-    "FLEX_CLIENT_ID": "your_flex_client_id",
-    "FLEX_CLIENT_SECRET": "your_flex_client_secret",
     
     "AZURE_TENANT_ID": "your_azure_tenant_id",
     "AZURE_CLIENT_ID": "your_azure_client_id",

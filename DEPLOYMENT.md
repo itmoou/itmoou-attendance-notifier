@@ -158,11 +158,9 @@ az functionapp config appsettings set \
   --name $FUNCTION_APP_NAME \
   --resource-group $RESOURCE_GROUP \
   --settings \
-    "FLEX_API_BASE_URL=https://your-flex-api.com" \
-    "FLEX_ACCESS_TOKEN=your_access_token" \
+    "FLEX_API_BASE=https://api.flex.team" \
+    "FLEX_TOKEN_URL=https://api.flex.team/oauth/token" \
     "FLEX_REFRESH_TOKEN=your_refresh_token" \
-    "FLEX_CLIENT_ID=your_client_id" \
-    "FLEX_CLIENT_SECRET=your_client_secret" \
     "AZURE_TENANT_ID=your_tenant_id" \
     "AZURE_CLIENT_ID=your_azure_client_id" \
     "AZURE_CLIENT_SECRET=your_azure_client_secret" \
@@ -175,13 +173,13 @@ az functionapp config appsettings set \
 
 ### 환경 변수 목록
 
+⚠️ **중요**: Flex OpenAPI는 Client ID/Secret을 사용하지 않습니다!
+
 | 변수명 | 필수 | 설명 |
 |--------|------|------|
-| `FLEX_API_BASE_URL` | ✅ | Flex API Base URL |
-| `FLEX_ACCESS_TOKEN` | ✅ | Flex Access Token |
-| `FLEX_REFRESH_TOKEN` | ✅ | Flex Refresh Token |
-| `FLEX_CLIENT_ID` | ✅ | Flex Client ID |
-| `FLEX_CLIENT_SECRET` | ✅ | Flex Client Secret |
+| `FLEX_API_BASE` | ✅ | Flex API Base URL (https://api.flex.team) |
+| `FLEX_TOKEN_URL` | ✅ | Flex Token URL (https://api.flex.team/oauth/token) |
+| `FLEX_REFRESH_TOKEN` | ✅ | Flex Refresh Token (최대 7일 유효) |
 | `AZURE_TENANT_ID` | ✅ | Azure AD Tenant ID |
 | `AZURE_CLIENT_ID` | ✅ | Azure AD Client ID |
 | `AZURE_CLIENT_SECRET` | ✅ | Azure AD Client Secret |

@@ -4,17 +4,23 @@
 
 이 문서는 시스템에서 사용하는 Flex OpenAPI 엔드포인트의 상세 명세를 제공합니다.
 
-⚠️ **중요**: 모든 `FLEX_API_BASE_URL`을 실제 Flex API URL로 교체해야 합니다.
+⚠️ **중요**: 
+- Flex API Base URL: `https://api.flex.team`
+- Flex Token URL: `https://api.flex.team/oauth/token`
 
 ---
 
 ## 인증
 
+### Flex OpenAPI 인증 방식
+
+⚠️ **중요**: Flex OpenAPI는 Client ID/Secret을 사용하지 않습니다!
+
 ### Access Token 획득
 
 **Endpoint:**
 ```http
-POST {FLEX_API_BASE_URL}/oauth/token
+POST https://api.flex.team/oauth/token
 ```
 
 **Headers:**
@@ -26,9 +32,7 @@ Content-Type: application/json
 ```json
 {
   "grant_type": "refresh_token",
-  "refresh_token": "your_refresh_token",
-  "client_id": "your_client_id",
-  "client_secret": "your_client_secret"
+  "refresh_token": "your_refresh_token"
 }
 ```
 
@@ -36,11 +40,15 @@ Content-Type: application/json
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
   "expires_in": 600,
   "token_type": "Bearer"
 }
 ```
+
+**토큰 관리:**
+- Refresh Token: 최대 7일 유효 (환경변수에 저장)
+- Access Token: 최대 10분 유효 (자동 재발급, 메모리 캐시)
+- Access Token 만료 30초 전 자동 재발급
 
 ---
 
@@ -50,7 +58,7 @@ Content-Type: application/json
 
 **Endpoint:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/employees
+GET https://api.flex.team/api/v1/employees
 ```
 
 **Headers:**
@@ -98,7 +106,7 @@ Content-Type: application/json
 
 **Endpoint:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/attendance/{employeeId}
+GET https://api.flex.team/api/v1/attendance/{employeeId}
 ```
 
 **Headers:**
@@ -115,7 +123,7 @@ Content-Type: application/json
 
 **Example Request:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/attendance/emp001?date=2024-02-04
+GET https://api.flex.team/api/v1/attendance/emp001?date=2024-02-04
 ```
 
 **Response (출근/퇴근 모두 체크됨):**
@@ -163,7 +171,7 @@ GET {FLEX_API_BASE_URL}/api/v1/attendance/emp001?date=2024-02-04
 
 **Endpoint:**
 ```http
-POST {FLEX_API_BASE_URL}/api/v1/attendance/batch
+POST https://api.flex.team/api/v1/attendance/batch
 ```
 
 **Headers:**
@@ -209,7 +217,7 @@ Content-Type: application/json
 
 **Endpoint:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/attendance/range
+GET https://api.flex.team/api/v1/attendance/range
 ```
 
 **Headers:**
@@ -225,7 +233,7 @@ Content-Type: application/json
 
 **Example Request:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/attendance/range?startDate=2024-02-01&endDate=2024-02-07
+GET https://api.flex.team/api/v1/attendance/range?startDate=2024-02-01&endDate=2024-02-07
 ```
 
 **Response:**
@@ -259,7 +267,7 @@ GET {FLEX_API_BASE_URL}/api/v1/attendance/range?startDate=2024-02-01&endDate=202
 
 **Endpoint:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/vacations
+GET https://api.flex.team/api/v1/vacations
 ```
 
 **Headers:**
@@ -273,7 +281,7 @@ Content-Type: application/json
 
 **Example Request:**
 ```http
-GET {FLEX_API_BASE_URL}/api/v1/vacations?date=2024-02-04
+GET https://api.flex.team/api/v1/vacations?date=2024-02-04
 ```
 
 **Response:**
@@ -419,7 +427,7 @@ Content-Type: application/json
 **1. Flex API - 직원 목록 조회**
 ```bash
 curl -X GET \
-  "${FLEX_API_BASE_URL}/api/v1/employees" \
+  "$https://api.flex.team/api/v1/employees" \
   -H "Authorization: Bearer ${FLEX_ACCESS_TOKEN}" \
   -H "Content-Type: application/json"
 ```
@@ -427,7 +435,7 @@ curl -X GET \
 **2. Flex API - 근태 기록 조회**
 ```bash
 curl -X GET \
-  "${FLEX_API_BASE_URL}/api/v1/attendance/emp001?date=2024-02-04" \
+  "$https://api.flex.team/api/v1/attendance/emp001?date=2024-02-04" \
   -H "Authorization: Bearer ${FLEX_ACCESS_TOKEN}" \
   -H "Content-Type: application/json"
 ```

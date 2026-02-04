@@ -99,7 +99,7 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
   - Flex OpenAPI (근태 데이터)
   - Microsoft Graph API (Teams, Outlook)
 - **인증**: 
-  - Flex: OAuth2 (Access Token + Refresh Token)
+  - Flex: Refresh Token 기반 (7일 유효, Access Token 자동 재발급)
   - Microsoft: Azure AD Client Credentials Flow
 
 ---
@@ -178,18 +178,24 @@ npm run build
 
 ### Flex OpenAPI 설정
 
+⚠️ **중요**: Flex OpenAPI는 Client ID/Secret을 사용하지 않습니다!
+
 ```bash
 # Flex API Base URL
-FLEX_API_BASE_URL=https://your-flex-api-base-url.com
+FLEX_API_BASE=https://api.flex.team
 
-# Flex API Tokens
-FLEX_ACCESS_TOKEN=your_flex_access_token_here
+# Flex Token URL (Access Token 재발급 엔드포인트)
+FLEX_TOKEN_URL=https://api.flex.team/oauth/token
+
+# Flex API Refresh Token (최대 7일 유효)
+# ⚠️ 주의: 절대 Git에 커밋하지 마세요!
 FLEX_REFRESH_TOKEN=your_flex_refresh_token_here
-
-# Flex API Credentials
-FLEX_CLIENT_ID=your_flex_client_id
-FLEX_CLIENT_SECRET=your_flex_client_secret
 ```
+
+**토큰 관리 방식:**
+- Refresh Token만 환경변수에 저장
+- Access Token은 자동으로 재발급 (10분 유효)
+- Access Token은 메모리에 캐시 (파일 저장 안 함)
 
 ### Microsoft Graph API 설정
 
@@ -268,11 +274,9 @@ npm start
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "FLEX_API_BASE_URL": "https://your-flex-api-base-url.com",
-    "FLEX_ACCESS_TOKEN": "your_access_token",
+    "FLEX_API_BASE": "https://api.flex.team",
+    "FLEX_TOKEN_URL": "https://api.flex.team/oauth/token",
     "FLEX_REFRESH_TOKEN": "your_refresh_token",
-    "FLEX_CLIENT_ID": "your_client_id",
-    "FLEX_CLIENT_SECRET": "your_client_secret",
     "AZURE_TENANT_ID": "your_tenant_id",
     "AZURE_CLIENT_ID": "your_azure_client_id",
     "AZURE_CLIENT_SECRET": "your_azure_client_secret",
