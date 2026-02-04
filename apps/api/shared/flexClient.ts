@@ -9,20 +9,34 @@
 import axios, { AxiosInstance } from 'axios';
 import { getFlexAccessToken } from './tokenManager';
 
-// Flex API 실제 응답 타입
-export interface FlexWorkBlock {
-  formName: string; // "근무"
-  blockFrom?: string; // 출근 시각 (ISO 8601)
-  blockTo?: string; // 퇴근 시각 (ISO 8601)
+export interface Employee {
+  employeeNumber: string;
+  name: string;
+  email: string;
+  teamsUserId?: string; // Microsoft Teams User ID
 }
 
-export interface FlexWorkSchedule {
+export interface AttendanceRecord {
   employeeNumber: string;
   date: string; // YYYY-MM-DD
   workBlocks: FlexWorkBlock[];
 }
 
 export interface FlexTimeOffUse {
+  // Flex time-off-uses의 "uses" 한 건(최소 필드만)
+  // 실제 필드명이 더 있으면 아래에 계속 추가하면 됨
+  timeOffType?: string;     // 예: "연차", "반차" 등 (있으면)
+  startAt?: string;         // ISO8601 (있으면)
+  endAt?: string;           // ISO8601 (있으면)
+  minutes?: number;         // 사용시간(분) (있으면)
+  status?: string;          // 승인상태 (있으면)
+}
+
+export interface UserTimeOffUses {
+  employeeNumber: string;
+  uses: FlexTimeOffUse[];
+}
+export interface VacationInfo {
   employeeNumber: string;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
