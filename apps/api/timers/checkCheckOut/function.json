@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    {
+      "name": "myTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 30 20 * * 1-5"
+    }
+  ],
+  "scriptFile": "../../dist/api/timers/checkCheckOut/index.js"
+}
