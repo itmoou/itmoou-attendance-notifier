@@ -21,8 +21,10 @@
   "license": "ISC",
   "dependencies": {
     "@azure/functions": "^4.5.0",
+    "@azure/data-tables": "^13.2.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.6.7",
+    "botbuilder": "^4.22.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
