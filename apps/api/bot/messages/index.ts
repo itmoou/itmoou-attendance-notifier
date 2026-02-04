@@ -86,22 +86,28 @@ async function handleMessage(
   context: InvocationContext
 ): Promise<void> {
   const text = turnContext.activity.text?.trim().toLowerCase() || '';
-  const userUpn = turnContext.activity.from.aadObjectId
-    ? await getUserUpnFromContext(turnContext)
-    : null;
+  
+  // 사용자 정보 추출
+  const aadObjectId = turnContext.activity.from.aadObjectId || null;
+  const teamsUserId = turnContext.activity.from.id || null;
+  const userUpn = await getUserUpnFromContext(turnContext);
 
-  context.log(`[BotMessages] 메시지 수신: "${text}" from ${userUpn || 'Unknown'}`);
+  context.log(`[BotMessages] 메시지 수신: "${text}" from AAD:${aadObjectId} UPN:${userUpn} TeamsID:${teamsUserId}`);
 
   // Conversation Reference 저장
   const conversationRef = TurnContext.getConversationReference(turnContext.activity);
   
-  if (userUpn) {
-    await saveConversationReference(userUpn, conversationRef);
-    context.log(`[BotMessages] Conversation Reference 저장 완료: ${userUpn}`);
+  if (aadObjectId || userUpn || teamsUserId) {
+    await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef);
+    context.log(`[BotMessages] Conversation Reference 저장 완료`);
+  } else {
+    context.warn('[BotMessages] 사용자 식별자를 찾을 수 없습니다.');
   }
 
   // 간단한 응답
   const replyMessage = `
+**근태알림(자동 알림) / 회신 불필요**
+
 안녕하세요! 👋
 
 저는 **근태 누락 알림 봇**입니다.
@@ -111,7 +117,7 @@ async function handleMessage(
 - 퇴근 체크 누락 시 (20:30, 22:00)
 - 당일 누적 요약 (22:10)
 
-회신할 필요는 없습니다. 알림을 받을 준비가 완료되었습니다! ✅
+✅ 알림을 받을 준비가 완료되었습니다!
 `.trim();
 
   await turnContext.sendActivity(replyMessage);
@@ -132,17 +138,23 @@ async function handleConversationUpdate(
       // 사용자가 봇을 추가한 경우
       context.log(`[BotMessages] 새 사용자 추가: ${member.name}`);
       
-      // Conversation Reference 저장
-      const conversationRef = TurnContext.getConversationReference(turnContext.activity);
+      // 사용자 정보 추출
+      const aadObjectId = turnContext.activity.from.aadObjectId || null;
+      const teamsUserId = turnContext.activity.from.id || null;
       const userUpn = await getUserUpnFromContext(turnContext);
       
-      if (userUpn) {
-        await saveConversationReference(userUpn, conversationRef);
-        context.log(`[BotMessages] Conversation Reference 저장 (추가 이벤트): ${userUpn}`);
+      // Conversation Reference 저장
+      const conversationRef = TurnContext.getConversationReference(turnContext.activity);
+      
+      if (aadObjectId || userUpn || teamsUserId) {
+        await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef);
+        context.log(`[BotMessages] Conversation Reference 저장 (추가 이벤트)`);
       }
 
       // 환영 메시지
       await turnContext.sendActivity(`
+**근태알림(자동 알림) / 회신 불필요**
+
 안녕하세요! 👋
 
 근태 누락 알림 봇에 오신 것을 환영합니다!

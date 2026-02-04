@@ -11,8 +11,8 @@
     "FUNCTIONS_WORKER_RUNTIME": "node",
     "FUNCTIONS_WORKER_RUNTIME_VERSION": "18",
     
-    "FLEX_API_BASE": "https://api.flex.team",
-    "FLEX_TOKEN_URL": "https://api.flex.team/oauth/token",
+    "FLEX_API_BASE": "https://openapi.flex.team/v2",
+    "FLEX_TOKEN_URL": "https://openapi.flex.team/v2/auth/realms/open-api/protocol/openid-connect/token",
     "FLEX_REFRESH_TOKEN": "your_flex_refresh_token_here",
     
     "BOT_APP_ID": "your_bot_app_id_here",
