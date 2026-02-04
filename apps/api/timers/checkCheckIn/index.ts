@@ -9,7 +9,10 @@
 
 import { app, InvocationContext, Timer } from '@azure/functions';
 import { getFlexClient } from '../../shared/flexClient';
-import { getTokenManager } from '../../shared/tokenManager';
+import { 
+  getRefreshTokenDaysRemaining,
+  isRefreshTokenExpiringSoon 
+} from '../../shared/tokenManager';
 import { getOutlookClient } from '../../shared/outlookClient';
 import {
   getCurrentDate,
@@ -33,11 +36,10 @@ async function checkCheckInHandler(myTimer: Timer, context: InvocationContext): 
 
   try {
     // 1. Refresh Token 만료 체크
-    const tokenManager = getTokenManager();
     const warningDays = parseInt(process.env.REFRESH_TOKEN_WARNING_DAYS || '2', 10);
     
-    if (tokenManager.isRefreshTokenExpiringSoon(warningDays)) {
-      const daysRemaining = tokenManager.getRefreshTokenDaysRemaining();
+    if (isRefreshTokenExpiringSoon(warningDays)) {
+      const daysRemaining = getRefreshTokenDaysRemaining();
       context.log(`[CheckCheckIn] ⚠️ Refresh Token 만료 임박: ${daysRemaining}일 남음`);
       
       const outlookClient = getOutlookClient();

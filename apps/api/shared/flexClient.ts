@@ -4,7 +4,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
-import { getTokenManager } from './tokenManager';
+import { getFlexAccessToken } from './tokenManager';
 
 export interface Employee {
   id: string;
@@ -30,13 +30,16 @@ export interface VacationInfo {
 
 class FlexClient {
   private client: AxiosInstance;
-  private tokenManager;
 
   constructor() {
-    this.tokenManager = getTokenManager();
+    const apiBase = process.env.FLEX_API_BASE;
+    
+    if (!apiBase) {
+      throw new Error('FLEX_API_BASE 환경변수가 설정되지 않았습니다.');
+    }
     
     this.client = axios.create({
-      baseURL: process.env.FLEX_API_BASE_URL,
+      baseURL: apiBase,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +49,7 @@ class FlexClient {
     // 요청 인터셉터: Access Token 자동 추가
     this.client.interceptors.request.use(
       async (config) => {
-        const token = await this.tokenManager.getValidAccessToken();
+        const token = await getFlexAccessToken();
         config.headers.Authorization = `Bearer ${token}`;
         return config;
       },
