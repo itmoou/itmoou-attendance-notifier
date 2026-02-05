@@ -38,16 +38,15 @@ jobs:
             npm run test --if-present -- --passWithNoTests
           }
 
-      # ✅ dist에 host.json / package.json을 확실히 포함 (배포 필수 파일)
       - name: Ensure host.json and package.json in dist
         shell: pwsh
         run: |
           if (!(Test-Path dist)) { throw "dist folder missing - build output not found" }
 
-          Copy-Item host.json dist/host.json -Force
+          # ✅ host.json은 레포 루트가 아니라 apps/api 아래에 있음
+          Copy-Item apps/api/host.json dist/host.json -Force
           Copy-Item package.json dist/package.json -Force
 
-      # ✅ dist 산출물 검증 (문제 재발 방지)
       - name: Verify dist output
         shell: pwsh
         run: |
@@ -80,7 +79,7 @@ jobs:
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_A3E6596BD9E44AEBB0A5469AA18E9161 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED821A97B9BEBA2A194486 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED821A97B4C54BFE97D9BEBA2A194486 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6CE76D743CC041F2B9DA44DF72807EFF }}
 
       - name: Deploy to Azure Functions
