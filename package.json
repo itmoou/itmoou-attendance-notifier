@@ -8,7 +8,7 @@
     "watch": "tsc --watch",
     "prestart": "npm run build",
     "start": "func start",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "keywords": [
     "azure-functions",
