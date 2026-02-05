@@ -10,6 +10,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import {
   CloudAdapter,
+  ConfigurationBotFrameworkAuthentication,
   ConversationReference,
   TurnContext,
   TeamsInfo,
@@ -19,22 +20,33 @@ import {
   saveConversationReference,
   ensureTableExists,
 } from '../../shared/storage/teamsConversationRepo';
+import { validateBotEnvs } from '../../shared/utils/envUtil';
 
 /**
- * Bot Adapter 생성
+ * Bot Adapter 생성 (Singleton)
  */
-function getBotAdapter(): CloudAdapter {
-  const appId = process.env.BOT_APP_ID;
-  const appPassword = process.env.BOT_APP_PASSWORD;
+let botAdapter: CloudAdapter | null = null;
 
-  if (!appId || !appPassword) {
-    throw new Error('BOT_APP_ID 또는 BOT_APP_PASSWORD 환경변수가 설정되지 않았습니다.');
+function getBotAdapter(): CloudAdapter {
+  if (botAdapter) {
+    return botAdapter;
   }
 
-  return new CloudAdapter({
-    appId,
-    appPassword,
-  });
+  const { appId, appPassword } = validateBotEnvs();
+
+  const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication(
+    {},
+    {
+      MicrosoftAppId: appId,
+      MicrosoftAppPassword: appPassword,
+      MicrosoftAppType: 'MultiTenant',
+      MicrosoftAppTenantId: '',
+    } as any // Type workaround for botbuilder ConfigurationServiceClientCredentialFactoryOptions
+  );
+
+  botAdapter = new CloudAdapter(botFrameworkAuthentication);
+  
+  return botAdapter;
 }
 
 /**
@@ -52,8 +64,23 @@ async function botMessagesHandler(
 
     const adapter = getBotAdapter();
 
-    // Bot Framework Activity 처리
-    await adapter.process(req, {} as any, async (turnContext: TurnContext) => {
+    // Azure Functions HttpRequest body 추출
+    const body = await req.text();
+    const activity = body ? JSON.parse(body) : undefined;
+
+    // CloudAdapter는 process 메서드를 사용하고, HTTP Request/Response를 처리함
+    // Azure Functions의 req/res를 Node.js 스타일로 변환
+    await adapter.process(req as any, {
+      status: (code: number) => {
+        // Response status 설정 (실제로 사용되지 않음, 아래 return에서 처리)
+      },
+      send: (value: any) => {
+        // Response body 설정 (실제로 사용되지 않음)
+      },
+      end: () => {
+        // Response 완료 (실제로 사용되지 않음)
+      },
+    } as any, async (turnContext: TurnContext) => {
       if (turnContext.activity.type === ActivityTypes.Message) {
         await handleMessage(turnContext, context);
       } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {

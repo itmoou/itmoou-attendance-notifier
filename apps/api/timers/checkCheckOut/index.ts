@@ -1,84 +1,179 @@
 /**
  * Check-Out Timer Function
- * 퇴근 누락 체크 및 알림
- * 
- * 실행 시간:
- * - 20:30 (1차 알림)
- * - 22:00 (2차 최종 알림)
+ * 퇴근 누락 알림 (20:30, 22:00)
  */
 
 import { app, InvocationContext, Timer } from '@azure/functions';
 import { getFlexClient } from '../../shared/flexClient';
+import { sendBulkProactiveMessages } from '../../shared/teamsClient';
 import {
-  getCurrentDate,
-  filterOutVacationEmployees,
-  findMissingCheckOuts,
-  createCheckOutNotificationMessage,
-  sendTeamsNotifications,
-} from '../../shared/rules';
+  getAllEmployeeMaps,
+  ensureEmployeeMapTableExists,
+} from '../../shared/storage/employeeMapRepo';
+import {
+  wasSent,
+  markMultipleSent,
+  ensureNotifyStateTableExists,
+  NotifyType,
+} from '../../shared/storage/notifyStateRepo';
 
 /**
- * 퇴근 체크 타이머 핸들러
+ * 현재 날짜 반환 (YYYY-MM-DD)
  */
-async function checkCheckOutHandler(myTimer: Timer, context: InvocationContext): Promise<void> {
-  const currentTime = new Date().toLocaleTimeString('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: process.env.TZ || 'Asia/Seoul',
-  });
+function getCurrentDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-  context.log(`[CheckCheckOut] 실행 시작: ${currentTime}`);
+/**
+ * 퇴근 누락 알림 처리
+ */
+async function checkCheckOutHandler(
+  myTimer: Timer,
+  context: InvocationContext
+): Promise<void> {
+  const triggerTime = new Date();
+  context.log(`[CheckCheckOut] 실행 시작: ${triggerTime.toISOString()}`);
 
   try {
-    // 1. 전체 직원 조회
-    const flexClient = getFlexClient();
-    const allEmployees = await flexClient.getEmployees();
-    context.log(`[CheckCheckOut] 전체 직원: ${allEmployees.length}명`);
+    // 테이블 존재 확인
+    await ensureEmployeeMapTableExists();
+    await ensureNotifyStateTableExists();
 
-    // 2. 휴가자 제외
-    const today = getCurrentDate();
-    const activeEmployees = await filterOutVacationEmployees(allEmployees, today);
-    context.log(`[CheckCheckOut] 근무 직원: ${activeEmployees.length}명`);
+    const date = getCurrentDate();
+    const hour = triggerTime.getHours();
+    const minute = triggerTime.getMinutes();
 
-    // 3. 퇴근 누락자 확인
-    const missingEmployees = await findMissingCheckOuts(activeEmployees, today);
-    context.log(`[CheckCheckOut] 퇴근 누락: ${missingEmployees.length}명`);
+    // 20:30 또는 22:00 판정
+    let notifyType: NotifyType;
+    let messagePhase: string;
 
-    if (missingEmployees.length === 0) {
-      context.log('[CheckCheckOut] 퇴근 누락자 없음. 알림 종료.');
+    if (hour === 20 && minute >= 25) {
+      notifyType = 'checkOut2030';
+      messagePhase = '1차';
+    } else if (hour === 22 && minute >= 0 && minute < 10) {
+      notifyType = 'checkOut2200';
+      messagePhase = '최종';
+    } else {
+      context.log(`[CheckCheckOut] 실행 시간이 아님: ${hour}:${minute}`);
       return;
     }
 
-    // 4. 알림 차수 판단 (시간 기반)
-    const hour = new Date().getHours();
-    const minute = new Date().getMinutes();
-    const attempt = (hour === 22 && minute >= 0) ? 2 : 1;
+    context.log(`[CheckCheckOut] ${messagePhase} 알림 처리 시작 (${notifyType})`);
 
-    context.log(`[CheckCheckOut] ${attempt}차 알림 발송`);
-
-    // 5. Teams DM 발송
-    await sendTeamsNotifications(
-      missingEmployees,
-      (name) => createCheckOutNotificationMessage(name, attempt)
+    // 1. 전체 사원 목록 조회
+    const employeeMaps = await getAllEmployeeMaps();
+    const allEmployeeNumbers = Array.from(employeeMaps.values()).map(
+      (e) => e.employeeNumber
     );
 
-    context.log(`[CheckCheckOut] 알림 발송 완료: ${missingEmployees.length}명`);
+    if (allEmployeeNumbers.length === 0) {
+      context.warn('[CheckCheckOut] 사원 목록이 비어있습니다.');
+      return;
+    }
+
+    context.log(`[CheckCheckOut] 전체 사원: ${allEmployeeNumbers.length}명`);
+
+    // 2. Flex API로 퇴근 누락자 조회
+    const flexClient = getFlexClient();
+    const missingEmployeeNumbers = await flexClient.getMissingCheckOutEmployees(
+      date,
+      allEmployeeNumbers
+    );
+
+    if (missingEmployeeNumbers.length === 0) {
+      context.log('[CheckCheckOut] 퇴근 누락자 없음');
+      return;
+    }
+
+    context.log(`[CheckCheckOut] 퇴근 누락: ${missingEmployeeNumbers.length}명`);
+
+    // 3. 중복 발송 방지: 미발송자만 필터링
+    const unsentEmployeeNumbers = [];
+    for (const empNum of missingEmployeeNumbers) {
+      const sent = await wasSent(date, empNum, notifyType);
+      if (!sent) {
+        unsentEmployeeNumbers.push(empNum);
+      }
+    }
+
+    if (unsentEmployeeNumbers.length === 0) {
+      context.log(`[CheckCheckOut] 모두 발송 완료 (${notifyType})`);
+      return;
+    }
+
+    context.log(`[CheckCheckOut] 미발송: ${unsentEmployeeNumbers.length}명`);
+
+    // 4. UPN 매핑
+    const messages: Array<{ userUpn: string; message: string; employeeNumber: string }> = [];
+    const unmappedEmployees: string[] = [];
+
+    for (const [upn, empMap] of employeeMaps.entries()) {
+      if (unsentEmployeeNumbers.includes(empMap.employeeNumber)) {
+        const message =
+          messagePhase === '1차'
+            ? `📢 **퇴근 체크 알림 (${messagePhase})**\n\n오늘 퇴근 체크가 누락되었습니다.\n확인 후 체크 부탁드립니다.`
+            : `⚠️ **퇴근 체크 알림 (${messagePhase})**\n\n아직 퇴근 체크가 누락되어 있습니다.\n지금 바로 확인해 주세요!`;
+
+        messages.push({
+          userUpn: upn,
+          message,
+          employeeNumber: empMap.employeeNumber,
+        });
+      }
+    }
+
+    // 매핑 누락자 확인
+    for (const empNum of unsentEmployeeNumbers) {
+      const mapped = Array.from(employeeMaps.values()).some(
+        (e) => e.employeeNumber === empNum
+      );
+      if (!mapped) {
+        unmappedEmployees.push(empNum);
+      }
+    }
+
+    if (unmappedEmployees.length > 0) {
+      context.warn(`[CheckCheckOut] 매핑 누락 사원: ${unmappedEmployees.join(', ')}`);
+    }
+
+    // 5. Teams Bot으로 메시지 전송
+    if (messages.length > 0) {
+      const result = await sendBulkProactiveMessages(messages);
+
+      // 6. 발송 완료 표시 (성공한 것만)
+      const successEmployeeNumbers = messages
+        .filter((m) => !result.failedUsers.includes(m.userUpn))
+        .map((m) => m.employeeNumber);
+
+      if (successEmployeeNumbers.length > 0) {
+        await markMultipleSent(date, successEmployeeNumbers, notifyType);
+      }
+
+      context.log(
+        `[CheckCheckOut] 발송 완료: 성공 ${result.successCount}명, 실패 ${result.failedCount}명`
+      );
+
+      // 온보딩 미완료자 로깅
+      if (result.failedUsers.length > 0) {
+        context.warn(`[CheckCheckOut] 온보딩 미완료(봇 대화 필요): ${result.failedUsers.join(', ')}`);
+      }
+    }
+
+    context.log(`[CheckCheckOut] ${messagePhase} 알림 처리 완료`);
   } catch (error) {
-    context.error('[CheckCheckOut] 실행 중 오류 발생:', error);
+    context.error('[CheckCheckOut] 처리 중 오류:', error);
     throw error;
   }
 }
 
-// Azure Functions 타이머 등록
-// CRON: 0 30 20 * * 1-5 (월~금 20:30)
-// CRON: 0 0 22 * * 1-5 (월~금 22:00)
-app.timer('checkCheckOut-first', {
-  schedule: '0 30 20 * * 1-5', // 월~금 20:30
-  handler: checkCheckOutHandler,
-});
-
-app.timer('checkCheckOut-second', {
-  schedule: '0 0 22 * * 1-5', // 월~금 22:00
+// Azure Functions Timer Trigger 등록
+// 20:30, 22:00 실행
+app.timer('checkCheckOut', {
+  schedule: '30 20,0 22 * * *',
   handler: checkCheckOutHandler,
 });
 

@@ -7,6 +7,7 @@
  */
 
 import axios from 'axios';
+import { validateFlexEnvs } from './utils/envUtil';
 
 /**
  * Access Token 캐시
@@ -37,16 +38,7 @@ export async function getFlexAccessToken(): Promise<string> {
   // Access Token 재발급
   console.log('[TokenManager] Access Token 재발급 시도...');
   
-  const refreshToken = process.env.FLEX_REFRESH_TOKEN;
-  const tokenUrl = process.env.FLEX_TOKEN_URL;
-
-  if (!refreshToken) {
-    throw new Error('FLEX_REFRESH_TOKEN 환경변수가 설정되지 않았습니다.');
-  }
-
-  if (!tokenUrl) {
-    throw new Error('FLEX_TOKEN_URL 환경변수가 설정되지 않았습니다.');
-  }
+  const { refreshToken, tokenUrl } = validateFlexEnvs();
 
   try {
     const response = await axios.post(tokenUrl, {
@@ -62,6 +54,10 @@ export async function getFlexAccessToken(): Promise<string> {
 
     // 캐시 업데이트
     cachedAccessToken = access_token;
+    if (!cachedAccessToken) {
+      throw new Error('Access Token이 비어있습니다.');
+    }
+    
     cachedExpiresAt = now + (expires_in * 1000);
 
     console.log(`[TokenManager] Access Token 재발급 완료 (유효기간: ${expires_in}초)`);
