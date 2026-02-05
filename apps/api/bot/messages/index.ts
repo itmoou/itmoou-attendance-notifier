@@ -64,31 +64,62 @@ async function botMessagesHandler(
 
     const adapter = getBotAdapter();
 
-    // Response 상태와 body를 저장할 변수
+    // Response 상태와 헤더, body를 저장할 변수
     let responseStatus = 200;
+    let responseHeaders: Record<string, string> = {};
     let responseBody: any = '';
 
-    // Node.js 스타일의 Response 객체 생성
-    const res = {
-      status: (code: number) => {
+    // Express 스타일의 완전한 Response 객체 생성
+    const res: any = {
+      statusCode: 200,
+      status: function (code: number) {
+        this.statusCode = code;
         responseStatus = code;
-        return res;
+        return this;
       },
-      send: (body: any) => {
+      send: function (body: any) {
         responseBody = body;
-        return res;
+        return this;
       },
-      json: (obj: any) => {
+      json: function (obj: any) {
         responseBody = JSON.stringify(obj);
-        return res;
+        this.set('Content-Type', 'application/json');
+        return this;
       },
-      end: () => {
-        return res;
+      end: function (data?: any) {
+        if (data) {
+          responseBody = data;
+        }
+        return this;
       },
+      set: function (field: string, value: string) {
+        responseHeaders[field] = value;
+        return this;
+      },
+      setHeader: function (name: string, value: string) {
+        responseHeaders[name] = value;
+        return this;
+      },
+      getHeader: function (name: string) {
+        return responseHeaders[name];
+      },
+      removeHeader: function (name: string) {
+        delete responseHeaders[name];
+      },
+      write: function (chunk: any) {
+        if (typeof chunk === 'string') {
+          responseBody += chunk;
+        } else {
+          responseBody = chunk;
+        }
+        return true;
+      },
+      writableEnded: false,
+      headersSent: false,
     };
 
     // CloudAdapter process 호출
-    await adapter.process(req as any, res as any, async (turnContext: TurnContext) => {
+    await adapter.process(req as any, res, async (turnContext: TurnContext) => {
       if (turnContext.activity.type === ActivityTypes.Message) {
         await handleMessage(turnContext, context);
       } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {
@@ -103,7 +134,8 @@ async function botMessagesHandler(
       status: responseStatus,
       body: responseBody || '',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': responseHeaders['Content-Type'] || 'application/json',
+        ...responseHeaders,
       },
     };
   } catch (error: any) {
@@ -111,7 +143,7 @@ async function botMessagesHandler(
     return {
       status: 500,
       body: JSON.stringify({
-        error: error.message,
+        error: error.message || String(error),
       }),
       headers: {
         'Content-Type': 'application/json',
