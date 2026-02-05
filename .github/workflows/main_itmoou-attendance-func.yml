@@ -38,14 +38,20 @@ jobs:
             npm run test --if-present -- --passWithNoTests
           }
 
-      - name: Ensure host.json and package.json in dist
+      - name: Install production dependencies in dist
         shell: pwsh
         run: |
           if (!(Test-Path dist)) { throw "dist folder missing - build output not found" }
 
-          # ✅ host.json은 레포 루트가 아니라 apps/api 아래에 있음
+          # ✅ host.json과 package files를 dist로 복사
           Copy-Item apps/api/host.json dist/host.json -Force
           Copy-Item package.json dist/package.json -Force
+          Copy-Item package-lock.json dist/package-lock.json -Force
+
+          # ✅ dist에서 production dependencies 설치
+          Push-Location dist
+          npm ci --omit=dev
+          Pop-Location
 
       - name: Verify dist output
         shell: pwsh
@@ -54,6 +60,7 @@ jobs:
           if (!(Test-Path dist/index.js)) { throw "dist/index.js missing (entry not built)" }
           if (!(Test-Path dist/host.json)) { throw "dist/host.json missing" }
           if (!(Test-Path dist/package.json)) { throw "dist/package.json missing" }
+          if (!(Test-Path dist/node_modules)) { throw "dist/node_modules missing (dependencies not installed)" }
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
@@ -89,5 +96,6 @@ jobs:
           app-name: 'itmoou-attendance-func'
           slot-name: 'Production'
           package: .
-          enable-oryx-build: true
-          scm-do-build-during-deployment: true
+          # ✅ node_modules를 직접 배포하므로 Oryx Build 비활성화
+          enable-oryx-build: false
+          scm-do-build-during-deployment: false
