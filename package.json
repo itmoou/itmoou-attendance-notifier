@@ -25,7 +25,8 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.6.7",
     "botbuilder": "^4.22.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "isomorphic-fetch": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
