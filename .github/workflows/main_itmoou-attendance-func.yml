@@ -10,7 +10,6 @@ on:
   workflow_dispatch:
 
 env:
-  # ✅ Azure Functions 프로젝트 루트 (host.json이 있는 폴더)
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'dist'
   NODE_VERSION: '22.x'
 
@@ -29,19 +28,34 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # ✅ package.json이 레포 루트에 있으니 루트에서 설치/빌드
       - name: Install & Build
         shell: pwsh
         run: |
           npm ci
           npm run build --if-present
 
-          # ✅ 테스트가 없어도 실패하지 않게 처리
           if (Test-Path package.json) {
             npm run test --if-present -- --passWithNoTests
           }
 
-      # ✅ 배포 아티팩트는 apps/api만 올림 (host.json이 루트가 되게)
+      # ✅ dist에 host.json / package.json을 확실히 포함 (배포 필수 파일)
+      - name: Ensure host.json and package.json in dist
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist)) { throw "dist folder missing - build output not found" }
+
+          Copy-Item host.json dist/host.json -Force
+          Copy-Item package.json dist/package.json -Force
+
+      # ✅ dist 산출물 검증 (문제 재발 방지)
+      - name: Verify dist output
+        shell: pwsh
+        run: |
+          dir dist
+          if (!(Test-Path dist/index.js)) { throw "dist/index.js missing (entry not built)" }
+          if (!(Test-Path dist/host.json)) { throw "dist/host.json missing" }
+          if (!(Test-Path dist/package.json)) { throw "dist/package.json missing" }
+
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
@@ -66,7 +80,7 @@ jobs:
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_A3E6596BD9E44AEBB0A5469AA18E9161 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED821A97B4C54BFE97D9BEBA2A194486 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED821A97B9BEBA2A194486 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6CE76D743CC041F2B9DA44DF72807EFF }}
 
       - name: Deploy to Azure Functions
@@ -75,6 +89,4 @@ jobs:
         with:
           app-name: 'itmoou-attendance-func'
           slot-name: 'Production'
-          # ✅ host.json이 루트가 되는 패키지 경로로 배포
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-
