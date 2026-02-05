@@ -64,23 +64,31 @@ async function botMessagesHandler(
 
     const adapter = getBotAdapter();
 
-    // Azure Functions HttpRequest body 추출
-    const body = await req.text();
-    const activity = body ? JSON.parse(body) : undefined;
+    // Response 상태와 body를 저장할 변수
+    let responseStatus = 200;
+    let responseBody: any = '';
 
-    // CloudAdapter는 process 메서드를 사용하고, HTTP Request/Response를 처리함
-    // Azure Functions의 req/res를 Node.js 스타일로 변환
-    await adapter.process(req as any, {
+    // Node.js 스타일의 Response 객체 생성
+    const res = {
       status: (code: number) => {
-        // Response status 설정 (실제로 사용되지 않음, 아래 return에서 처리)
+        responseStatus = code;
+        return res;
       },
-      send: (value: any) => {
-        // Response body 설정 (실제로 사용되지 않음)
+      send: (body: any) => {
+        responseBody = body;
+        return res;
+      },
+      json: (obj: any) => {
+        responseBody = JSON.stringify(obj);
+        return res;
       },
       end: () => {
-        // Response 완료 (실제로 사용되지 않음)
+        return res;
       },
-    } as any, async (turnContext: TurnContext) => {
+    };
+
+    // CloudAdapter process 호출
+    await adapter.process(req as any, res as any, async (turnContext: TurnContext) => {
       if (turnContext.activity.type === ActivityTypes.Message) {
         await handleMessage(turnContext, context);
       } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {
@@ -90,9 +98,13 @@ async function botMessagesHandler(
       }
     });
 
+    // CloudAdapter가 설정한 response 반환
     return {
-      status: 200,
-      body: 'OK',
+      status: responseStatus,
+      body: responseBody || '',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     };
   } catch (error: any) {
     context.error('[BotMessages] 처리 중 오류:', error);
@@ -101,6 +113,9 @@ async function botMessagesHandler(
       body: JSON.stringify({
         error: error.message,
       }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
     };
   }
 }
