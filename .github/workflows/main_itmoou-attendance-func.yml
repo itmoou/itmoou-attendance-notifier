@@ -10,52 +10,58 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '22.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
+  # ✅ Azure Functions 프로젝트 루트 (host.json이 있는 폴더)
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'apps/api'
+  NODE_VERSION: '22.x'
 
 jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read #This is required for actions/checkout
-      
+      contents: read
+
     steps:
-      - name: 'Checkout GitHub Action'
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node ${{ env.NODE_VERSION }} Environment
+      - name: Setup Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: 'Resolve Project Dependencies Using Npm'
+      # ✅ package.json이 레포 루트에 있으니 루트에서 설치/빌드
+      - name: Install & Build
         shell: pwsh
         run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          npm install
+          npm ci
           npm run build --if-present
-          npm run test --if-present
-          popd
 
-      - name: Upload artifact for deployment job
+          # ✅ 테스트가 없어도 실패하지 않게 처리
+          if (Test-Path package.json) {
+            npm run test --if-present -- --passWithNoTests
+          }
+
+      # ✅ 배포 아티팩트는 apps/api만 올림 (host.json이 루트가 되게)
+      - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: .
+          name: functionapp
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
 
   deploy:
     runs-on: windows-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
-      
+          name: functionapp
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -63,11 +69,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED821A97B4C54BFE97D9BEBA2A194486 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6CE76D743CC041F2B9DA44DF72807EFF }}
 
-      - name: 'Run Azure Functions Action'
+      - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         id: fa
         with:
           app-name: 'itmoou-attendance-func'
           slot-name: 'Production'
+          # ✅ host.json이 루트가 되는 패키지 경로로 배포
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
