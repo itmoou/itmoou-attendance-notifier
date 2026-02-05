@@ -89,3 +89,5 @@ jobs:
           app-name: 'itmoou-attendance-func'
           slot-name: 'Production'
           package: .
+          enable-oryx-build: true
+          scm-do-build-during-deployment: true
