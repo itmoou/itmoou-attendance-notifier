@@ -15,6 +15,7 @@ import {
   TurnContext,
   TeamsInfo,
   ActivityTypes,
+  Activity,
 } from 'botbuilder';
 import {
   saveConversationReference,
@@ -41,10 +42,16 @@ function getBotAdapter(): CloudAdapter {
       MicrosoftAppPassword: appPassword,
       MicrosoftAppType: 'MultiTenant',
       MicrosoftAppTenantId: '',
-    } as any // Type workaround for botbuilder ConfigurationServiceClientCredentialFactoryOptions
+    } as any
   );
 
   botAdapter = new CloudAdapter(botFrameworkAuthentication);
+  
+  // 오류 핸들러
+  botAdapter.onTurnError = async (context, error) => {
+    console.error('[BotAdapter] onTurnError:', error);
+    await context.sendActivity('죄송합니다. 오류가 발생했습니다.');
+  };
   
   return botAdapter;
 }
@@ -64,90 +71,57 @@ async function botMessagesHandler(
 
     const adapter = getBotAdapter();
 
-    // Response 상태와 헤더, body를 저장할 변수
-    let responseStatus = 200;
-    let responseHeaders: Record<string, string> = {};
-    let responseBody: any = '';
+    // Request body와 헤더 추출
+    const bodyText = await req.text();
+    const activity: Activity = JSON.parse(bodyText);
+    const authHeader = req.headers.get('authorization') || '';
 
-    // Express 스타일의 완전한 Response 객체 생성
-    const res: any = {
-      statusCode: 200,
-      status: function (code: number) {
-        this.statusCode = code;
-        responseStatus = code;
-        return this;
-      },
-      send: function (body: any) {
-        responseBody = body;
-        return this;
-      },
-      json: function (obj: any) {
-        responseBody = JSON.stringify(obj);
-        this.set('Content-Type', 'application/json');
-        return this;
-      },
-      end: function (data?: any) {
-        if (data) {
-          responseBody = data;
-        }
-        return this;
-      },
-      set: function (field: string, value: string) {
-        responseHeaders[field] = value;
-        return this;
-      },
-      setHeader: function (name: string, value: string) {
-        responseHeaders[name] = value;
-        return this;
-      },
-      getHeader: function (name: string) {
-        return responseHeaders[name];
-      },
-      removeHeader: function (name: string) {
-        delete responseHeaders[name];
-      },
-      write: function (chunk: any) {
-        if (typeof chunk === 'string') {
-          responseBody += chunk;
-        } else {
-          responseBody = chunk;
-        }
-        return true;
-      },
-      writableEnded: false,
-      headersSent: false,
+    context.log(`[BotMessages] Activity Type: ${activity.type}`);
+
+    // Node.js HTTP 스타일 req/res 객체 생성
+    const nodeReq: any = {
+      headers: Object.fromEntries(req.headers.entries()),
+      body: activity,
+      method: req.method,
+      url: req.url,
     };
 
-    // CloudAdapter process 호출
-    await adapter.process(req as any, res, async (turnContext: TurnContext) => {
+    const nodeRes: any = {
+      end: () => {},
+      send: () => {},
+      status: (code: number) => {
+        nodeRes.statusCode = code;
+        return nodeRes;
+      },
+      statusCode: 200,
+    };
+
+    // CloudAdapter.process() 호출
+    await adapter.process(nodeReq, nodeRes, async (turnContext: TurnContext) => {
       if (turnContext.activity.type === ActivityTypes.Message) {
         await handleMessage(turnContext, context);
       } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {
         await handleConversationUpdate(turnContext, context);
       } else {
-        context.log(`[BotMessages] 처리하지 않는 Activity Type: ${turnContext.activity.type}`);
+        context.log(`[BotMessages] 알 수 없는 Activity Type: ${turnContext.activity.type}`);
       }
     });
 
-    // CloudAdapter가 설정한 response 반환
     return {
-      status: responseStatus,
-      body: responseBody || '',
-      headers: {
-        'Content-Type': responseHeaders['Content-Type'] || 'application/json',
-        ...responseHeaders,
-      },
+      status: nodeRes.statusCode || 200,
+      body: '',
     };
   } catch (error: any) {
-    context.error('[BotMessages] 처리 중 오류:', error);
+    context.error('[BotMessages] 오류:', error);
+    
+    if (error.statusCode === 401) {
+      return { status: 401, body: 'Unauthorized' };
+    }
+    
     return {
       status: 500,
-      body: JSON.stringify({
-        error: error.message || String(error),
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      body: JSON.stringify({ error: error.message }),
+      headers: { 'Content-Type': 'application/json' },
     };
   }
 }
@@ -161,25 +135,20 @@ async function handleMessage(
 ): Promise<void> {
   const text = turnContext.activity.text?.trim().toLowerCase() || '';
   
-  // 사용자 정보 추출
   const aadObjectId = turnContext.activity.from.aadObjectId || null;
   const teamsUserId = turnContext.activity.from.id || null;
   const userUpn = await getUserUpnFromContext(turnContext);
 
-  context.log(`[BotMessages] 메시지 수신: "${text}" from AAD:${aadObjectId} UPN:${userUpn} TeamsID:${teamsUserId}`);
+  context.log(`[BotMessages] 메시지: "${text}" from ${userUpn}`);
 
-  // Conversation Reference 저장
   const conversationRef = TurnContext.getConversationReference(turnContext.activity);
   
   if (aadObjectId || userUpn || teamsUserId) {
     await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef);
-    context.log(`[BotMessages] Conversation Reference 저장 완료`);
-  } else {
-    context.warn('[BotMessages] 사용자 식별자를 찾을 수 없습니다.');
+    context.log('[BotMessages] Conversation Reference 저장');
   }
 
-  // 간단한 응답
-  const replyMessage = `
+  await turnContext.sendActivity(`
 **근태알림(자동 알림) / 회신 불필요**
 
 안녕하세요! 👋
@@ -192,13 +161,11 @@ async function handleMessage(
 - 당일 누적 요약 (22:10)
 
 ✅ 알림을 받을 준비가 완료되었습니다!
-`.trim();
-
-  await turnContext.sendActivity(replyMessage);
+`.trim());
 }
 
 /**
- * Conversation Update 처리 (봇 추가/제거)
+ * Conversation Update 처리
  */
 async function handleConversationUpdate(
   turnContext: TurnContext,
@@ -209,23 +176,19 @@ async function handleConversationUpdate(
 
   for (const member of membersAdded) {
     if (member.id !== botId) {
-      // 사용자가 봇을 추가한 경우
-      context.log(`[BotMessages] 새 사용자 추가: ${member.name}`);
+      context.log(`[BotMessages] 새 사용자: ${member.name}`);
       
-      // 사용자 정보 추출
       const aadObjectId = turnContext.activity.from.aadObjectId || null;
       const teamsUserId = turnContext.activity.from.id || null;
       const userUpn = await getUserUpnFromContext(turnContext);
       
-      // Conversation Reference 저장
       const conversationRef = TurnContext.getConversationReference(turnContext.activity);
       
       if (aadObjectId || userUpn || teamsUserId) {
         await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef);
-        context.log(`[BotMessages] Conversation Reference 저장 (추가 이벤트)`);
+        context.log('[BotMessages] Conversation Reference 저장 (추가)');
       }
 
-      // 환영 메시지
       await turnContext.sendActivity(`
 **근태알림(자동 알림) / 회신 불필요**
 
@@ -240,11 +203,10 @@ async function handleConversationUpdate(
 }
 
 /**
- * Turn Context로부터 사용자 UPN 추출
+ * 사용자 UPN 추출
  */
 async function getUserUpnFromContext(turnContext: TurnContext): Promise<string | null> {
   try {
-    // Teams 컨텍스트에서 사용자 정보 조회
     const member = await TeamsInfo.getMember(
       turnContext,
       turnContext.activity.from.id
@@ -252,14 +214,12 @@ async function getUserUpnFromContext(turnContext: TurnContext): Promise<string |
     
     return member.userPrincipalName || member.email || null;
   } catch (error) {
-    console.error('[BotMessages] 사용자 UPN 조회 실패:', error);
-    
-    // Fallback: activity에서 직접 추출 시도
+    console.error('[BotMessages] UPN 조회 실패:', error);
     return turnContext.activity.from.aadObjectId || null;
   }
 }
 
-// Azure Functions HTTP Trigger 등록
+// HTTP Trigger 등록
 app.http('botMessages', {
   methods: ['POST'],
   authLevel: 'anonymous',
