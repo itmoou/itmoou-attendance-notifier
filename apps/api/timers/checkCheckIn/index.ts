@@ -171,9 +171,15 @@ async function checkCheckInHandler(
 }
 
 // Azure Functions Timer Trigger 등록
-// 11:05, 11:30 실행 (cron: 분 시 * * *)
-app.timer('checkCheckIn', {
-  schedule: '5,30 11 * * *',
+// 첫 번째: 11:05 실행 (cron: 초 분 시 일 월 요일)
+app.timer('checkCheckIn-first', {
+  schedule: '0 5 11 * * 1-5',  // 월~금 11:05
+  handler: checkCheckInHandler,
+});
+
+// 두 번째: 11:30 실행
+app.timer('checkCheckIn-second', {
+  schedule: '0 30 11 * * 1-5',  // 월~금 11:30
   handler: checkCheckInHandler,
 });
 
