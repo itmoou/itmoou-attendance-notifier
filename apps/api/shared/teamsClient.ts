@@ -7,6 +7,7 @@
 
 import {
   CloudAdapter,
+  ConfigurationBotFrameworkAuthentication,
   ConversationReference,
   TurnContext,
   TeamsInfo,
@@ -18,22 +19,32 @@ import {
   getConversationReferences,
 } from './storage/teamsConversationRepo';
 import { getGraphAccessToken } from './graphClient';
+import { validateBotEnvs } from './utils/envUtil';
 
 /**
- * Bot Adapter 생성
+ * Bot Adapter 생성 (Singleton)
  */
-function getBotAdapter(): CloudAdapter {
-  const appId = process.env.BOT_APP_ID;
-  const appPassword = process.env.BOT_APP_PASSWORD;
+let botAdapter: CloudAdapter | null = null;
 
-  if (!appId || !appPassword) {
-    throw new Error('BOT_APP_ID 또는 BOT_APP_PASSWORD 환경변수가 설정되지 않았습니다.');
+function getBotAdapter(): CloudAdapter {
+  if (botAdapter) {
+    return botAdapter;
   }
 
-  return new CloudAdapter({
-    appId,
-    appPassword,
-  });
+  const { appId, appPassword } = validateBotEnvs();
+
+  const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication(
+    {},
+    {
+      MicrosoftAppId: appId,
+      MicrosoftAppPassword: appPassword,
+      MicrosoftAppType: 'MultiTenant',
+      MicrosoftAppTenantId: '',
+    } as any // Type workaround
+  );
+
+  botAdapter = new CloudAdapter(botFrameworkAuthentication);
+  return botAdapter;
 }
 
 /**

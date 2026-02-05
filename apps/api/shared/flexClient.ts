@@ -16,6 +16,26 @@ export interface Employee {
   teamsUserId?: string; // Microsoft Teams User ID
 }
 
+/**
+ * Flex API의 근태 기록 한 건(Block)
+ * formName="근무"이면 근무 블록
+ * blockFrom, blockTo로 출퇴근 시각 기록
+ */
+export interface FlexWorkBlock {
+  formName: string;        // "근무", "외근" 등
+  blockFrom?: string;      // 출근 시각 (ISO8601 또는 HH:mm 등)
+  blockTo?: string;        // 퇴근 시각 (ISO8601 또는 HH:mm 등)
+}
+
+/**
+ * Flex API의 GET /users/work-schedules-with-work-clock/dates/{date} 응답 한 건
+ */
+export interface FlexWorkSchedule {
+  employeeNumber: string;
+  date: string;            // YYYY-MM-DD
+  workBlocks: FlexWorkBlock[];
+}
+
 export interface AttendanceRecord {
   employeeNumber: string;
   date: string; // YYYY-MM-DD
@@ -23,13 +43,15 @@ export interface AttendanceRecord {
 }
 
 export interface FlexTimeOffUse {
-  // Flex time-off-uses의 "uses" 한 건(최소 필드만)
-  // 실제 필드명이 더 있으면 아래에 계속 추가하면 됨
-  timeOffType?: string;     // 예: "연차", "반차" 등 (있으면)
-  startAt?: string;         // ISO8601 (있으면)
-  endAt?: string;           // ISO8601 (있으면)
-  minutes?: number;         // 사용시간(분) (있으면)
-  status?: string;          // 승인상태 (있으면)
+  // Flex time-off-uses API 응답 한 건
+  employeeNumber: string;   // 사원번호
+  timeOffType?: string;     // "연차", "반차", "병가" 등
+  startDate: string;        // 시작일 (YYYY-MM-DD)
+  endDate: string;          // 종료일 (YYYY-MM-DD)
+  startAt?: string;         // 시작 시각 (ISO8601)
+  endAt?: string;           // 종료 시각 (ISO8601)
+  minutes?: number;         // 사용시간(분)
+  status?: string;          // 승인상태
 }
 
 export interface UserTimeOffUses {

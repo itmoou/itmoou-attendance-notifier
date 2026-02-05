@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { validateGraphEnvs } from './utils/envUtil';
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
@@ -22,11 +23,13 @@ export async function getGraphAccessToken(): Promise<string> {
 
     console.log('[GraphClient] 새 Access Token 요청');
     
+    const { tenantId, clientId, clientSecret } = validateGraphEnvs();
+    
     const response = await axios.post(
-      `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       new URLSearchParams({
-        client_id: process.env.AZURE_CLIENT_ID || '',
-        client_secret: process.env.AZURE_CLIENT_SECRET || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         scope: 'https://graph.microsoft.com/.default',
         grant_type: 'client_credentials',
       }),
@@ -38,6 +41,10 @@ export async function getGraphAccessToken(): Promise<string> {
     );
 
     cachedToken = response.data.access_token;
+    if (!cachedToken) {
+      throw new Error('Access Token을 받지 못했습니다.');
+    }
+    
     const expiresIn = response.data.expires_in || 3600; // 기본 1시간
     tokenExpiresAt = now + (expiresIn - 60) * 1000; // 1분 여유
 
