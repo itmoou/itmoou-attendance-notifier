@@ -107,7 +107,11 @@ async function sendActivity(activity: Activity, replyActivity: Partial<Activity>
   }
 
   const token = await getBotToken();
-  const url = `${activity.serviceUrl}/v3/conversations/${activity.conversation.id}/activities/${activity.id}`;
+  
+  // Reply to activity (활동에 대한 답장)
+  const url = activity.id
+    ? `${activity.serviceUrl}/v3/conversations/${activity.conversation.id}/activities/${activity.id}`
+    : `${activity.serviceUrl}/v3/conversations/${activity.conversation.id}/activities`;
 
   await axios.post(url, replyActivity, {
     headers: {
