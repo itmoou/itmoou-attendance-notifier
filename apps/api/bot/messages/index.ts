@@ -1,16 +1,11 @@
 /**
- * Teams Bot Messages Endpoint
- * Teams Bot이 메시지를 받는 HTTP Trigger
- * 
- * 역할:
- * 1. 사용자가 처음 봇에게 메시지를 보낼 때 Conversation Reference 저장
- * 2. 간단한 응답 메시지 전송
+ * Teams Bot Messages Endpoint  
+ * BotFrameworkAdapter 사용 (CloudAdapter 대신)
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import {
-  CloudAdapter,
-  ConfigurationBotFrameworkAuthentication,
+  BotFrameworkAdapter,
   ConversationReference,
   TurnContext,
   TeamsInfo,
@@ -24,32 +19,24 @@ import {
 import { validateBotEnvs } from '../../shared/utils/envUtil';
 
 /**
- * Bot Adapter 생성 (Singleton)
+ * Bot Adapter (Singleton)
  */
-let botAdapter: CloudAdapter | null = null;
+let botAdapter: BotFrameworkAdapter | null = null;
 
-function getBotAdapter(): CloudAdapter {
+function getBotAdapter(): BotFrameworkAdapter {
   if (botAdapter) {
     return botAdapter;
   }
 
   const { appId, appPassword } = validateBotEnvs();
 
-  const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication(
-    {},
-    {
-      MicrosoftAppId: appId,
-      MicrosoftAppPassword: appPassword,
-      MicrosoftAppType: 'MultiTenant',
-      MicrosoftAppTenantId: '',
-    } as any
-  );
-
-  botAdapter = new CloudAdapter(botFrameworkAuthentication);
+  botAdapter = new BotFrameworkAdapter({
+    appId,
+    appPassword,
+  });
   
-  // 오류 핸들러
   botAdapter.onTurnError = async (context, error) => {
-    console.error('[BotAdapter] onTurnError:', error);
+    console.error('[Bot] onTurnError:', error);
     await context.sendActivity('죄송합니다. 오류가 발생했습니다.');
   };
   
@@ -66,50 +53,50 @@ async function botMessagesHandler(
   context.log('[BotMessages] 요청 수신');
 
   try {
-    // 테이블 존재 확인
     await ensureTableExists();
 
     const adapter = getBotAdapter();
-
-    // Request body와 헤더 추출
     const bodyText = await req.text();
     const activity: Activity = JSON.parse(bodyText);
-    const authHeader = req.headers.get('authorization') || '';
 
-    context.log(`[BotMessages] Activity Type: ${activity.type}`);
+    context.log(`[BotMessages] Activity: ${activity.type}`);
 
-    // Node.js HTTP 스타일 req/res 객체 생성
+    // Node.js 스타일 req/res
     const nodeReq: any = {
       headers: Object.fromEntries(req.headers.entries()),
       body: activity,
-      method: req.method,
-      url: req.url,
     };
+
+    let statusCode = 200;
+    let responseBody = '';
 
     const nodeRes: any = {
-      end: () => {},
-      send: () => {},
-      status: (code: number) => {
-        nodeRes.statusCode = code;
-        return nodeRes;
-      },
       statusCode: 200,
+      status: function(code: number) {
+        this.statusCode = code;
+        statusCode = code;
+        return this;
+      },
+      send: function(body: any) {
+        responseBody = typeof body === 'string' ? body : JSON.stringify(body);
+        return this;
+      },
+      end: function() {
+        return this;
+      },
     };
 
-    // CloudAdapter.process() 호출
-    await adapter.process(nodeReq, nodeRes, async (turnContext: TurnContext) => {
+    await adapter.processActivity(nodeReq, nodeRes, async (turnContext: TurnContext) => {
       if (turnContext.activity.type === ActivityTypes.Message) {
         await handleMessage(turnContext, context);
       } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {
         await handleConversationUpdate(turnContext, context);
-      } else {
-        context.log(`[BotMessages] 알 수 없는 Activity Type: ${turnContext.activity.type}`);
       }
     });
 
     return {
-      status: nodeRes.statusCode || 200,
-      body: '',
+      status: statusCode,
+      body: responseBody || '',
     };
   } catch (error: any) {
     context.error('[BotMessages] 오류:', error);
@@ -126,15 +113,11 @@ async function botMessagesHandler(
   }
 }
 
-/**
- * 메시지 처리
- */
 async function handleMessage(
   turnContext: TurnContext,
   context: InvocationContext
 ): Promise<void> {
-  const text = turnContext.activity.text?.trim().toLowerCase() || '';
-  
+  const text = turnContext.activity.text?.trim() || '';
   const aadObjectId = turnContext.activity.from.aadObjectId || null;
   const teamsUserId = turnContext.activity.from.id || null;
   const userUpn = await getUserUpnFromContext(turnContext);
@@ -164,9 +147,6 @@ async function handleMessage(
 `.trim());
 }
 
-/**
- * Conversation Update 처리
- */
 async function handleConversationUpdate(
   turnContext: TurnContext,
   context: InvocationContext
@@ -186,7 +166,6 @@ async function handleConversationUpdate(
       
       if (aadObjectId || userUpn || teamsUserId) {
         await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef);
-        context.log('[BotMessages] Conversation Reference 저장 (추가)');
       }
 
       await turnContext.sendActivity(`
@@ -202,24 +181,18 @@ async function handleConversationUpdate(
   }
 }
 
-/**
- * 사용자 UPN 추출
- */
 async function getUserUpnFromContext(turnContext: TurnContext): Promise<string | null> {
   try {
     const member = await TeamsInfo.getMember(
       turnContext,
       turnContext.activity.from.id
     );
-    
     return member.userPrincipalName || member.email || null;
   } catch (error) {
-    console.error('[BotMessages] UPN 조회 실패:', error);
     return turnContext.activity.from.aadObjectId || null;
   }
 }
 
-// HTTP Trigger 등록
 app.http('botMessages', {
   methods: ['POST'],
   authLevel: 'anonymous',
