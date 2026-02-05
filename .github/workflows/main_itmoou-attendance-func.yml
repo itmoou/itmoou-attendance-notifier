@@ -11,7 +11,7 @@ on:
 
 env:
   # ✅ Azure Functions 프로젝트 루트 (host.json이 있는 폴더)
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'apps/api'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'dist'
   NODE_VERSION: '22.x'
 
 jobs:
@@ -77,3 +77,4 @@ jobs:
           slot-name: 'Production'
           # ✅ host.json이 루트가 되는 패키지 경로로 배포
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
