@@ -137,9 +137,9 @@ async function testEmailReportHandler(
 }
 
 // Azure Functions Timer Trigger 등록
-// 07:20 UTC 실행 (1회)
+// 07:37 UTC 실행 (1회)
 app.timer('testEmailReport', {
-  schedule: '0 20 7 * * *',
+  schedule: '0 37 7 * * *',
   handler: testEmailReportHandler,
 });
 
