@@ -42,8 +42,24 @@ const httpTrigger = async function (
   context.log('[VacationApproved] ========== 휴가 승인 처리 시작 ==========');
 
   try {
+    // 요청 바디 로깅 (디버깅용)
+    const rawBody = await req.text();
+    context.log('[VacationApproved] 받은 raw body:', rawBody);
+    
     // 요청 바디 검증
-    const body = await req.json() as VacationApprovalRequest;
+    let body: VacationApprovalRequest;
+    try {
+      body = JSON.parse(rawBody) as VacationApprovalRequest;
+    } catch (parseError: any) {
+      context.error('[VacationApproved] JSON 파싱 실패:', parseError.message);
+      return {
+        status: 400,
+        jsonBody: {
+          success: false,
+          error: `JSON 파싱 오류: ${parseError.message}. 받은 데이터: ${rawBody.substring(0, 100)}`,
+        },
+      };
+    }
 
     if (!body || !body.employeeNumber || !body.employeeName || !body.startDate || !body.endDate) {
       return {
