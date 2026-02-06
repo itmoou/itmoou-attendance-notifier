@@ -167,9 +167,9 @@ async function dailySummaryHandler(
 }
 
 // Azure Functions Timer Trigger 등록
-// 22:10 실행
+// 22:10 KST = 13:10 UTC
 app.timer('dailySummary', {
-  schedule: '0 10 22 * * *',
+  schedule: '0 10 13 * * 1-5',  // 월~금 13:10 UTC (한국 22:10)
   handler: dailySummaryHandler,
 });
 

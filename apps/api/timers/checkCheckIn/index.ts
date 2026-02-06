@@ -44,21 +44,21 @@ async function checkCheckInHandler(
     await ensureNotifyStateTableExists();
 
     const date = getCurrentDate();
-    const hour = triggerTime.getHours();
-    const minute = triggerTime.getMinutes();
+    const hour = triggerTime.getUTCHours();
+    const minute = triggerTime.getUTCMinutes();
 
-    // 11:05 또는 11:30 판정
+    // 02:05 UTC (한국 11:05) 또는 02:30 UTC (한국 11:30) 판정
     let notifyType: NotifyType;
     let messagePhase: string;
 
-    if (hour === 11 && minute >= 0 && minute < 15) {
+    if (hour === 2 && minute >= 0 && minute < 15) {
       notifyType = 'checkIn1105';
       messagePhase = '1차';
-    } else if (hour === 11 && minute >= 25) {
+    } else if (hour === 2 && minute >= 25) {
       notifyType = 'checkIn1130';
       messagePhase = '최종';
     } else {
-      context.log(`[CheckCheckIn] 실행 시간이 아님: ${hour}:${minute}`);
+      context.log(`[CheckCheckIn] 실행 시간이 아님: ${hour}:${minute} UTC`);
       return;
     }
 
@@ -171,15 +171,15 @@ async function checkCheckInHandler(
 }
 
 // Azure Functions Timer Trigger 등록
-// 첫 번째: 11:05 실행 (cron: 초 분 시 일 월 요일)
+// 첫 번째: 11:05 KST = 02:05 UTC (cron: 초 분 시 일 월 요일)
 app.timer('checkCheckIn-first', {
-  schedule: '0 5 11 * * 1-5',  // 월~금 11:05
+  schedule: '0 5 2 * * 1-5',  // 월~금 02:05 UTC (한국 11:05)
   handler: checkCheckInHandler,
 });
 
-// 두 번째: 11:30 실행
+// 두 번째: 11:30 KST = 02:30 UTC
 app.timer('checkCheckIn-second', {
-  schedule: '0 30 11 * * 1-5',  // 월~금 11:30
+  schedule: '0 30 2 * * 1-5',  // 월~금 02:30 UTC (한국 11:30)
   handler: checkCheckInHandler,
 });
 

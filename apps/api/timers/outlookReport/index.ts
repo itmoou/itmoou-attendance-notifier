@@ -213,9 +213,9 @@ function createReportHtml(
 }
 
 // Azure Functions Timer Trigger 등록
-// 09:00 실행
+// 09:00 KST = 00:00 UTC (매일)
 app.timer('outlookReport', {
-  schedule: '0 0 9 * * *',
+  schedule: '0 0 0 * * *',  // 매일 00:00 UTC (한국 09:00)
   handler: outlookReportHandler,
 });
 

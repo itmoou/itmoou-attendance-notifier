@@ -44,21 +44,21 @@ async function checkCheckOutHandler(
     await ensureNotifyStateTableExists();
 
     const date = getCurrentDate();
-    const hour = triggerTime.getHours();
-    const minute = triggerTime.getMinutes();
+    const hour = triggerTime.getUTCHours();
+    const minute = triggerTime.getUTCMinutes();
 
-    // 20:30 또는 22:00 판정
+    // 11:30 UTC (한국 20:30) 또는 13:00 UTC (한국 22:00) 판정
     let notifyType: NotifyType;
     let messagePhase: string;
 
-    if (hour === 20 && minute >= 25) {
+    if (hour === 11 && minute >= 25 && minute <= 35) {
       notifyType = 'checkOut2030';
       messagePhase = '1차';
-    } else if (hour === 22 && minute >= 0 && minute < 10) {
+    } else if (hour === 13 && minute >= 0 && minute < 10) {
       notifyType = 'checkOut2200';
       messagePhase = '최종';
     } else {
-      context.log(`[CheckCheckOut] 실행 시간이 아님: ${hour}:${minute}`);
+      context.log(`[CheckCheckOut] 실행 시간이 아님: ${hour}:${minute} UTC`);
       return;
     }
 
@@ -171,9 +171,15 @@ async function checkCheckOutHandler(
 }
 
 // Azure Functions Timer Trigger 등록
-// 20:30, 22:00 실행
-app.timer('checkCheckOut', {
-  schedule: '30 20,0 22 * * *',
+// 첫 번째: 20:30 KST = 11:30 UTC
+app.timer('checkCheckOut-first', {
+  schedule: '0 30 11 * * 1-5',  // 월~금 11:30 UTC (한국 20:30)
+  handler: checkCheckOutHandler,
+});
+
+// 두 번째: 22:00 KST = 13:00 UTC
+app.timer('checkCheckOut-second', {
+  schedule: '0 0 13 * * 1-5',  // 월~금 13:00 UTC (한국 22:00)
   handler: checkCheckOutHandler,
 });
 
