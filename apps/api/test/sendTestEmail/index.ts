@@ -13,9 +13,12 @@ async function sendTestEmailHandler(
   context.log('[SendTestEmail] HTTP 요청 수신');
 
   try {
-    const hrEmail = process.env.HR_EMAIL || 'hr@itmoou.com';
+    const hrEmailEnv = process.env.HR_EMAIL || 'hr@itmoou.com';
     
-    context.log(`[SendTestEmail] HR 이메일: ${hrEmail}`);
+    // 쉼표로 구분된 여러 수신자 지원
+    const hrEmails = hrEmailEnv.split(',').map(email => email.trim()).filter(email => email.length > 0);
+    
+    context.log(`[SendTestEmail] HR 이메일: ${hrEmails.join(', ')}`);
     context.log(`[SendTestEmail] AZURE_CLIENT_ID: ${process.env.AZURE_CLIENT_ID ? '설정됨' : '미설정'}`);
     context.log(`[SendTestEmail] AZURE_CLIENT_SECRET: ${process.env.AZURE_CLIENT_SECRET ? '설정됨' : '미설정'}`);
     context.log(`[SendTestEmail] BOT_TENANT_ID: ${process.env.BOT_TENANT_ID ? '설정됨' : '미설정'}`);
@@ -58,7 +61,8 @@ async function sendTestEmailHandler(
         <tr><th>항목</th><th>값</th></tr>
         <tr><td>실행 시간</td><td>${triggerTime.toISOString()}</td></tr>
         <tr><td>실행 방법</td><td>HTTP Trigger (즉시 실행)</td></tr>
-        <tr><td>발신자</td><td>${hrEmail}</td></tr>
+        <tr><td>발신자</td><td>${process.env.HR_FROM_EMAIL || 'hr@itmoou.com'}</td></tr>
+        <tr><td>수신자</td><td>${hrEmails.join(', ')}</td></tr>
         <tr><td>Function</td><td>sendTestEmail</td></tr>
       </table>
     </div>
@@ -97,18 +101,18 @@ async function sendTestEmailHandler(
     // Outlook Client로 이메일 전송
     const outlookClient = getOutlookClient();
     await outlookClient.sendHtmlEmail(
-      [hrEmail],
+      hrEmails,
       '✅ [HTTP 테스트] 근태 알림 시스템 - 이메일 기능 확인',
       testHtml
     );
 
-    context.log(`[SendTestEmail] 테스트 이메일 전송 완료: ${hrEmail}`);
+    context.log(`[SendTestEmail] 테스트 이메일 전송 완료: ${hrEmails.join(', ')}`);
     
     return {
       status: 200,
       jsonBody: {
         success: true,
-        message: `테스트 이메일이 ${hrEmail}로 전송되었습니다.`,
+        message: `테스트 이메일이 ${hrEmails.join(', ')}로 전송되었습니다.`,
         timestamp: triggerTime.toISOString(),
       },
     };

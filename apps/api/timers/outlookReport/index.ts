@@ -104,9 +104,17 @@ async function outlookReportHandler(
     );
 
     // 6. HR에게 이메일 발송
-    const hrEmail = process.env.HR_EMAIL || 'hr@itmoou.com';
-    if (!hrEmail) {
+    const hrEmailEnv = process.env.HR_EMAIL || 'hr@itmoou.com';
+    if (!hrEmailEnv) {
       context.warn('[OutlookReport] HR 이메일이 설정되지 않았습니다.');
+      return;
+    }
+
+    // 쉼표로 구분된 여러 수신자 지원
+    const hrEmails = hrEmailEnv.split(',').map(email => email.trim()).filter(email => email.length > 0);
+    
+    if (hrEmails.length === 0) {
+      context.warn('[OutlookReport] 유효한 HR 이메일이 없습니다.');
       return;
     }
 
@@ -117,12 +125,12 @@ async function outlookReportHandler(
 
     const outlookClient = getOutlookClient();
     await outlookClient.sendHtmlEmail(
-      [hrEmail],
+      hrEmails,
       `[근태 리포트] ${yesterday} 근태 누락 현황 (${totalMissing}건)`,
       reportHtml
     );
 
-    context.log(`[OutlookReport] 리포트 발송 완료: ${hrEmail}`);
+    context.log(`[OutlookReport] 리포트 발송 완료: ${hrEmails.join(', ')}`);
   } catch (error) {
     context.error('[OutlookReport] 처리 중 오류:', error);
     throw error;
