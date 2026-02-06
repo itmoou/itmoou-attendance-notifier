@@ -108,10 +108,13 @@ async function sendActivity(activity: Activity, replyActivity: Partial<Activity>
 
   const token = await getBotToken();
   
+  // serviceUrl의 trailing slash 제거
+  const serviceUrl = activity.serviceUrl.replace(/\/$/, '');
+  
   // Reply to activity (활동에 대한 답장)
   const url = activity.id
-    ? `${activity.serviceUrl}/v3/conversations/${activity.conversation.id}/activities/${activity.id}`
-    : `${activity.serviceUrl}/v3/conversations/${activity.conversation.id}/activities`;
+    ? `${serviceUrl}/v3/conversations/${activity.conversation.id}/activities/${activity.id}`
+    : `${serviceUrl}/v3/conversations/${activity.conversation.id}/activities`;
 
   await axios.post(url, replyActivity, {
     headers: {
