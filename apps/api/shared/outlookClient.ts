@@ -321,4 +321,12 @@ export function getOutlookClient(): OutlookClient {
   return outlookClientInstance;
 }
 
+/**
+ * 이메일 전송 (편의 함수)
+ */
+export async function sendEmail(email: EmailMessage): Promise<void> {
+  const client = getOutlookClient();
+  await client.sendEmail(email);
+}
+
 export default OutlookClient;
