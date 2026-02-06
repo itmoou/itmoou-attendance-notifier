@@ -77,7 +77,8 @@ class OutlookClient {
     try {
       console.log(`[OutlookClient] 이메일 전송 시도: ${email.to.join(', ')}`);
 
-      const fromEmail = email.from || process.env.HR_EMAIL;
+      // 발신자: HR_FROM_EMAIL 또는 hr@itmoou.com (기본값)
+      const fromEmail = process.env.HR_FROM_EMAIL || 'hr@itmoou.com';
 
       if (!fromEmail) {
         throw new Error('발신자 이메일이 설정되지 않았습니다.');
@@ -109,7 +110,7 @@ class OutlookClient {
         saveToSentItems: true,
       };
 
-      // 공유 사서함 또는 개인 계정으로 발송
+      // 공유 사서함으로 발송
       await this.client.api(`/users/${fromEmail}/sendMail`).post(message);
 
       console.log(`[OutlookClient] 이메일 전송 완료: ${email.to.join(', ')}`);
