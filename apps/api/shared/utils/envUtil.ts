@@ -68,11 +68,12 @@ export function validateRequiredEnvs(names: string[]): void {
 /**
  * Bot 관련 필수 환경변수 검증
  */
-export function validateBotEnvs(): { appId: string; appPassword: string } {
+export function validateBotEnvs(): { appId: string; appPassword: string; tenantId?: string } {
   const appId = requireEnv('BOT_APP_ID');
   const appPassword = requireEnv('BOT_APP_PASSWORD');
+  const tenantId = optionalEnv('BOT_TENANT_ID'); // Single tenant용 (선택사항)
   
-  return { appId, appPassword };
+  return { appId, appPassword, tenantId: tenantId || undefined };
 }
 
 /**

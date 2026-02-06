@@ -1,0 +1,82 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
+  "version": "1.0.2",
+  "manifestVersion": "1.24",
+  "id": "8af1b11d-e12e-4b09-9965-c1616a9168ad",
+  "name": {
+    "short": "근태알림",
+    "full": "ITMOOU 근태 누락 자동 알림 봇"
+  },
+  "developer": {
+    "name": "아이티무유 주식회사",
+    "mpnId": "",
+    "websiteUrl": "https://itmoou.com",
+    "privacyUrl": "https://itmoou.com/privacy",
+    "termsOfUseUrl": "https://itmoou.com/terms"
+  },
+  "description": {
+    "short": "사내 근태 알림 및 출퇴근 체크 자동화 봇",
+    "full": "Flex 근태 데이터를 기반으로 출근/퇴근 체크 누락을 감지하여 Microsoft Teams를 통해 개인에게 자동 알림을 전송하는 사내 전용 봇입니다. 출근 체크 누락 시(11:05, 11:30), 퇴근 체크 누락 시(22:00, 22:20), 그리고 당일 요약(22:10)을 자동으로 알려드립니다."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#FFFFFF",
+  "staticTabs": [
+    {
+      "entityId": "conversations",
+      "scopes": [
+        "personal"
+      ]
+    },
+    {
+      "entityId": "about",
+      "scopes": [
+        "personal"
+      ]
+    }
+  ],
+  "bots": [
+    {
+      "botId": "52a8b283-875d-45ed-8282-f275c652f498",
+      "scopes": [
+        "personal"
+      ],
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "supportsFiles": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal"
+          ],
+          "commands": [
+            {
+              "title": "도움말",
+              "description": "봇 사용법과 기능 안내"
+            },
+            {
+              "title": "상태",
+              "description": "현재 알림 설정 상태 확인"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net",
+    "*.botframework.com",
+    "*.azure.com"
+  ],
+  "webApplicationInfo": {
+    "id": "52a8b283-875d-45ed-8282-f275c652f498",
+    "resource": "api://itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net/52a8b283-875d-45ed-8282-f275c652f498"
+  }
+}

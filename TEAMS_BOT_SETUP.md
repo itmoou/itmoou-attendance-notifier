@@ -1,306 +1,164 @@
 # Teams Bot 설정 가이드
 
-## ⚠️ 중요: Teams 알림 방식
+## 현재 상황
+- Azure Bot Service: ✅ 생성됨 (itmoou-attendance-bot)
+- Messaging Endpoint: ✅ 설정됨
+- Teams Channel: ✅ 활성화됨
+- Bot Framework Portal: ❌ 봇이 보이지 않음
+- Teams 앱: ❌ 설치되지 않음
 
-이 시스템은 **Microsoft Graph API가 아닌 Teams Bot (Proactive Message)**을 사용합니다.
+## 해결 방법
 
-**이유:**
-- Graph API의 `/chats/{id}/messages`는 app-only 권한으로 운영 목적 DM 발송이 불안정
-- Teams Bot은 사용자 동의 없이 proactive message 전송 가능
-- 더 안정적이고 Microsoft가 권장하는 방식
+### 옵션 1: Teams Developer Portal로 앱 생성 (권장)
 
----
+1. **Teams Developer Portal 접속**
+   - URL: https://dev.teams.microsoft.com/
+   - 로그인 (Azure Bot과 동일한 계정)
 
-## 1️⃣ Azure Bot Service 생성
+2. **새 앱 생성**
+   - "Apps" → "New app" 클릭
+   - App name: `근태 알림 봇`
+   - Short description: `출퇴근 체크 누락 시 자동 알림`
+   - Long description: `Flex 근태 시스템과 연동하여 출퇴근 체크 누락 시 Teams DM으로 자동 알림을 보냅니다.`
+   - Developer information: 회사 정보 입력
+   - App URLs: 회사 웹사이트 (또는 임시로 https://itmoou.com)
 
-### Azure Portal에서 Bot 생성
+3. **Bot 기능 추가**
+   - 왼쪽 메뉴: "App features" 클릭
+   - "Bot" 선택
+   
+   **Bot 설정**:
+   - Select an existing bot: "Enter a bot ID"
+   - Bot ID: `<BOT_APP_ID 값 입력>` (Azure Portal → Bot Service → Configuration → Microsoft App ID)
+   - Scope: **Personal** 체크 ✅
+   - Commands 추가 (선택사항):
+     ```
+     Command: help
+     Description: 봇 사용법 안내
+     ```
 
-```bash
-# 1. Azure Portal → Create a resource
-# 2. "Azure Bot" 검색
-# 3. 다음 정보로 생성:
-#    - Bot handle: flex-attendance-bot
-#    - Pricing tier: F0 (Free)
-#    - Microsoft App ID: Create new
-```
+4. **Publish**
+   - "Publish" → "Publish to org" 클릭
+   - 또는 "Download app package" (.zip 파일) 다운로드 후 수동 설치
 
-### Bot Credentials 저장
-
-생성 완료 후 다음 정보를 메모:
-- **Application (client) ID**: `BOT_APP_ID`
-- **Client Secret**: `BOT_APP_PASSWORD`
-
----
-
-## 2️⃣ Teams Channel 추가
-
-### Bot에 Teams 채널 연결
-
-```bash
-# 1. Azure Portal → Bot Service
-# 2. Channels → Microsoft Teams
-# 3. Enable 클릭
-# 4. 저장
-```
-
-### Messaging Endpoint 설정
-
-```bash
-# Azure Portal → Bot Service → Configuration → Messaging endpoint
-
-# 로컬 테스트 (ngrok 사용):
-https://your-ngrok-url.ngrok.io/api/bot/messages
-
-# Azure 배포 후:
-https://your-function-app.azurewebsites.net/api/bot/messages
-```
+5. **Teams에 설치**
+   - Teams → Apps → "Built for your org" (조직용으로 빌드됨)
+   - `근태 알림 봇` 찾아서 "Add" 클릭
 
 ---
 
-## 3️⃣ Azure Storage Account 생성
+### 옵션 2: App Studio 사용 (레거시)
 
-### Table Storage 생성
+1. **Teams에서 App Studio 설치**
+   - Teams → Apps → "App Studio" 검색
+   - "Add" 클릭
 
-```bash
-# 1. Azure Portal → Create Storage Account
-# 2. 생성 완료 후 Connection String 복사
-# 3. 환경변수에 저장: AZURE_STORAGE_CONNECTION_STRING
-```
+2. **Manifest editor 열기**
+   - App Studio → "Manifest editor" 탭
+   - "Create a new app" 클릭
 
-### TeamsConversation 테이블 생성
+3. **App details 입력**
+   - App names: `근태 알림 봇`
+   - App ID: Generate 클릭 (또는 기존 GUID 사용)
+   - Package name: `com.itmoou.attendance.bot`
+   - Version: `1.0.0`
+   - Short/Long description 입력
+   - Developer information 입력
 
-시스템이 자동으로 생성하지만, 수동으로 생성하려면:
+4. **Capabilities → Bots**
+   - "Set up" 클릭
+   - "Existing bot" 선택
+   - Bot ID: `<BOT_APP_ID>` 입력
+   - Scope: **Personal** 체크 ✅
 
-```bash
-# Azure Portal → Storage Account → Tables → + Table
-# Table name: TeamsConversation
-```
-
-**스키마:**
-- **PartitionKey**: `v1` (고정)
-- **RowKey**: 사용자 UPN (예: `ymsim@itmoou.com`)
-- **conversationReferenceJson**: Conversation Reference JSON
+5. **Test and distribute**
+   - "Install" 클릭하여 Teams에 설치
 
 ---
 
-## 4️⃣ Bot Manifest 생성 및 배포
+### 옵션 3: 수동으로 Manifest 생성
 
-### Manifest 파일 생성
-
-`manifest.json` 파일 생성:
+아래 manifest.json 파일을 생성하고 ZIP으로 압축 후 Teams에 업로드:
 
 ```json
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
   "version": "1.0.0",
-  "id": "YOUR_BOT_APP_ID",
+  "id": "<BOT_APP_ID>",
   "packageName": "com.itmoou.attendance.bot",
   "developer": {
     "name": "ITMOOU",
-    "websiteUrl": "https://www.itmoou.com",
-    "privacyUrl": "https://www.itmoou.com/privacy",
-    "termsOfUseUrl": "https://www.itmoou.com/terms"
-  },
-  "icons": {
-    "color": "color.png",
-    "outline": "outline.png"
+    "websiteUrl": "https://itmoou.com",
+    "privacyUrl": "https://itmoou.com/privacy",
+    "termsOfUseUrl": "https://itmoou.com/terms"
   },
   "name": {
-    "short": "근태 알림",
-    "full": "ITMOOU 근태 누락 알림 봇"
+    "short": "근태 알림 봇",
+    "full": "ITMOOU 근태 누락 자동 알림 봇"
   },
   "description": {
     "short": "출퇴근 체크 누락 시 자동 알림",
-    "full": "Flex 출퇴근 체크 누락 시 Teams로 자동 알림을 보내는 봇입니다."
+    "full": "Flex 근태 시스템과 연동하여 출퇴근 체크 누락 시 Teams DM으로 자동 알림을 보냅니다."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
   },
   "accentColor": "#FFFFFF",
   "bots": [
     {
-      "botId": "YOUR_BOT_APP_ID",
+      "botId": "<BOT_APP_ID>",
       "scopes": [
         "personal"
       ],
       "supportsFiles": false,
-      "isNotificationOnly": false
+      "isNotificationOnly": true
     }
   ],
   "permissions": [
     "identity",
     "messageTeamMembers"
   ],
-  "validDomains": []
+  "validDomains": [
+    "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net"
+  ]
 }
 ```
 
-### 아이콘 준비
+**필요한 파일**:
+1. `manifest.json` (위 내용)
+2. `color.png` (192x192 컬러 아이콘)
+3. `outline.png` (32x32 투명 아웃라인 아이콘)
 
-- `color.png`: 192x192 픽셀
-- `outline.png`: 32x32 픽셀 (투명 배경)
+위 3개 파일을 ZIP으로 압축 → Teams → Apps → "Upload a custom app"
 
-### ZIP 패키지 생성
+---
+
+## 환경변수 확인 필요
+
+Azure Portal → Function App → Environment variables에서 다음 값 확인:
 
 ```bash
-# manifest.json, color.png, outline.png을 ZIP으로 압축
-zip bot-package.zip manifest.json color.png outline.png
+BOT_APP_ID=<Microsoft App ID>
+BOT_APP_PASSWORD=<Microsoft App Password>
 ```
+
+**Microsoft App ID 찾는 법**:
+Azure Portal → Bot Service → Configuration → "Microsoft App ID" 복사
 
 ---
 
-## 5️⃣ Teams에 Bot 배포
+## 테스트 순서
 
-### 조직 전체에 배포 (관리자)
-
-```bash
-# 1. Teams Admin Center
-# 2. Teams apps → Manage apps
-# 3. Upload → Upload an app to your org's app catalog
-# 4. bot-package.zip 업로드
-# 5. 승인 및 배포
-```
-
-### 개인 배포 (테스트용)
-
-```bash
-# 1. Teams 앱
-# 2. Apps → Manage your apps
-# 3. Upload an app
-# 4. bot-package.zip 업로드
-```
+1. ✅ Bot Framework Portal에서 "Test in Web Chat"
+2. ✅ Teams에 앱 설치
+3. ✅ Teams에서 봇에게 메시지 전송
+4. ✅ Application Insights에서 로그 확인
+5. ✅ Azure Table Storage에서 ConversationReference 확인
 
 ---
 
-## 6️⃣ 사용자 초기 설정
+## 다음 단계
 
-### 사용자가 해야 할 일
-
-**모든 직원이 다음 단계를 수행해야 합니다:**
-
-1. **Teams에서 봇 검색**
-   ```
-   Teams → Apps → "근태 알림" 검색
-   ```
-
-2. **봇 추가**
-   ```
-   Add 클릭
-   ```
-
-3. **첫 메시지 전송**
-   ```
-   채팅창에서 "hi" 또는 아무 메시지나 전송
-   ```
-
-4. **봇 응답 확인**
-   ```
-   봇이 환영 메시지를 보내면 설정 완료!
-   ```
-
-**⚠️ 중요**: 
-- 사용자가 먼저 봇에게 메시지를 보내야 Conversation Reference가 저장됨
-- 저장되기 전에는 알림을 받을 수 없음
-- HR 담당자는 모든 직원이 봇을 추가했는지 확인 필요
-
----
-
-## 7️⃣ 환경 변수 설정
-
-### Azure Function App Settings
-
-```bash
-az functionapp config appsettings set \
-  --name func-flex-attendance \
-  --resource-group rg-flex-attendance \
-  --settings \
-    "BOT_APP_ID=your_bot_app_id" \
-    "BOT_APP_PASSWORD=your_bot_app_password" \
-    "AZURE_STORAGE_CONNECTION_STRING=your_connection_string"
-```
-
----
-
-## 8️⃣ 테스트
-
-### Conversation Reference 확인
-
-직원이 봇에게 메시지를 보낸 후:
-
-```bash
-# Azure Portal → Storage Account → Tables → TeamsConversation
-# RowKey에 직원 UPN이 있는지 확인
-```
-
-### 수동 테스트
-
-Timer Function을 수동으로 실행하여 알림이 전송되는지 확인:
-
-```bash
-# Azure Portal → Function App → Functions
-# checkCheckIn-first → Code + Test → Test/Run
-```
-
----
-
-## 9️⃣ 문제 해결
-
-### 알림이 전송되지 않음
-
-**증상:**
-```
-[TeamsBot] ❌ Conversation Reference 없음: user@example.com
-```
-
-**해결:**
-1. 사용자가 봇에게 메시지를 보냈는지 확인
-2. Table Storage에 Conversation Reference가 있는지 확인
-3. UPN이 정확한지 확인 (대소문자 구분 안 함)
-
-### Bot Endpoint 오류
-
-**증상:**
-```
-502 Bad Gateway
-```
-
-**해결:**
-1. Function App이 실행 중인지 확인
-2. Messaging Endpoint URL이 정확한지 확인
-3. BOT_APP_ID와 BOT_APP_PASSWORD가 올바른지 확인
-
-### Table Storage 연결 오류
-
-**증상:**
-```
-AZURE_STORAGE_CONNECTION_STRING 환경변수가 설정되지 않았습니다.
-```
-
-**해결:**
-1. Connection String이 환경변수에 설정되었는지 확인
-2. Storage Account가 생성되었는지 확인
-3. Function App 재시작
-
----
-
-## 🎯 체크리스트
-
-설정 완료 전 확인:
-
-- [ ] Azure Bot Service 생성 완료
-- [ ] BOT_APP_ID 및 BOT_APP_PASSWORD 저장
-- [ ] Teams Channel 추가
-- [ ] Messaging Endpoint 설정
-- [ ] Azure Storage Account 생성
-- [ ] Connection String 환경변수 설정
-- [ ] Bot Manifest ZIP 패키지 생성
-- [ ] Teams에 Bot 배포
-- [ ] 전체 직원이 봇 추가 및 첫 메시지 전송
-- [ ] Table Storage에 Conversation Reference 저장 확인
-- [ ] 테스트 알림 전송 성공
-
----
-
-## 📚 참고 자료
-
-- [Azure Bot Service 문서](https://learn.microsoft.com/azure/bot-service/)
-- [Teams Bot 개발 가이드](https://learn.microsoft.com/microsoftteams/platform/bots/what-are-bots)
-- [Proactive Messages](https://learn.microsoft.com/azure/bot-service/bot-builder-howto-proactive-messages)
+이 가이드에 따라 설정 후 결과를 공유해주세요!

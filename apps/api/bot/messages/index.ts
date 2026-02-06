@@ -62,10 +62,15 @@ async function getBotToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const { appId, appPassword } = validateBotEnvs();
+  const { appId, appPassword, tenantId } = validateBotEnvs();
+
+  // Tenant ID가 있으면 Single-tenant, 없으면 Multi-tenant (Bot Framework 기본)
+  const tokenEndpoint = tenantId
+    ? `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
+    : 'https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token';
 
   const response = await axios.post(
-    'https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token',
+    tokenEndpoint,
     new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: appId,

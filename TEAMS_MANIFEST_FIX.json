@@ -1,0 +1,39 @@
+{
+  "bots": [
+    {
+      "botId": "52a8b283-875d-45ed-8282-f275c652f498",
+      "scopes": [
+        "personal"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal"
+          ],
+          "commands": [
+            {
+              "title": "도움말",
+              "description": "봇 사용법 안내"
+            },
+            {
+              "title": "상태",
+              "description": "현재 상태 확인"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net",
+    "*.botframework.com"
+  ]
+}
