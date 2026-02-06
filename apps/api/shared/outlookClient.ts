@@ -39,8 +39,16 @@ class OutlookClient {
   private async getAccessToken(): Promise<string> {
     try {
       const axios = require('axios');
+      
+      // AZURE_TENANT_ID 또는 BOT_TENANT_ID 사용
+      const tenantId = process.env.AZURE_TENANT_ID || process.env.BOT_TENANT_ID;
+      
+      if (!tenantId) {
+        throw new Error('AZURE_TENANT_ID 또는 BOT_TENANT_ID가 설정되지 않았습니다.');
+      }
+      
       const response = await axios.post(
-        `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`,
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
         new URLSearchParams({
           client_id: process.env.AZURE_CLIENT_ID || '',
           client_secret: process.env.AZURE_CLIENT_SECRET || '',
