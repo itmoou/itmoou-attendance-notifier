@@ -83,7 +83,6 @@ class OutlookClient {
         throw new Error('발신자 이메일이 설정되지 않았습니다.');
       }
 
-      // TODO: 실제 Graph API endpoint로 변경
       const message = {
         message: {
           subject: email.subject,
@@ -110,7 +109,7 @@ class OutlookClient {
         saveToSentItems: true,
       };
 
-      // 대신 보내기 (Send on behalf)
+      // 공유 사서함 또는 개인 계정으로 발송
       await this.client.api(`/users/${fromEmail}/sendMail`).post(message);
 
       console.log(`[OutlookClient] 이메일 전송 완료: ${email.to.join(', ')}`);
