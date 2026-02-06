@@ -90,8 +90,15 @@ export async function createVacationEvent(
     return { success: true, eventId };
   } catch (error: any) {
     const errorMsg = error.response?.data?.error?.message || error.message || '알 수 없는 오류';
-    console.error(`[CalendarClient] 휴가 일정 생성 실패: ${params.userEmail}`, error);
-    return { success: false, error: errorMsg };
+    const statusCode = error.response?.status;
+    const errorDetail = error.response?.data;
+    
+    console.error(`[CalendarClient] 휴가 일정 생성 실패: ${params.userEmail}`);
+    console.error(`[CalendarClient] Status: ${statusCode}`);
+    console.error(`[CalendarClient] Error: ${errorMsg}`);
+    console.error(`[CalendarClient] Detail:`, errorDetail);
+    
+    return { success: false, error: `${statusCode} - ${errorMsg}` };
   }
 }
 
@@ -159,8 +166,15 @@ export async function createTeamVacationEvent(
     return { success: true, eventId };
   } catch (error: any) {
     const errorMsg = error.response?.data?.error?.message || error.message || '알 수 없는 오류';
-    console.error(`[CalendarClient] 팀 캘린더 일정 생성 실패`, error);
-    return { success: false, error: errorMsg };
+    const statusCode = error.response?.status;
+    const errorDetail = error.response?.data;
+    
+    console.error(`[CalendarClient] 팀 캘린더 일정 생성 실패`);
+    console.error(`[CalendarClient] Status: ${statusCode}`);
+    console.error(`[CalendarClient] Error: ${errorMsg}`);
+    console.error(`[CalendarClient] Detail:`, errorDetail);
+    
+    return { success: false, error: `${statusCode} - ${errorMsg}` };
   }
 }
 
