@@ -284,6 +284,135 @@ class FlexClient {
     console.log(`[FlexClient] 퇴근 누락: ${missing.length}/${statuses.length}명`);
     return missing;
   }
+
+  /**
+   * 특정 날짜의 휴가자 목록 조회 (상세 정보 포함)
+   * @param date 조회 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 휴가자 상세 정보 목록
+   */
+  async getVacationersWithDetails(
+    date: string,
+    employeeNumbers: string[]
+  ): Promise<VacationInfo[]> {
+    try {
+      const timeOffs = await this.getTimeOffUses(date, employeeNumbers);
+
+      const vacationers: VacationInfo[] = timeOffs
+        .filter((timeOff) => timeOff.startDate <= date && timeOff.endDate >= date)
+        .map((timeOff) => ({
+          employeeNumber: timeOff.employeeNumber,
+          startDate: timeOff.startDate,
+          endDate: timeOff.endDate,
+          timeOffType: timeOff.timeOffType || '연차',
+        }));
+
+      console.log(`[FlexClient] ${date} 휴가자: ${vacationers.length}명`);
+      return vacationers;
+    } catch (error) {
+      console.error('[FlexClient] 휴가자 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 날짜 범위의 휴가 정보 조회 (주간/월간 휴가 현황용)
+   * @param startDate 시작 날짜 (YYYY-MM-DD)
+   * @param endDate 종료 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 기간 내 모든 휴가 정보
+   */
+  async getVacationsInRange(
+    startDate: string,
+    endDate: string,
+    employeeNumbers: string[]
+  ): Promise<FlexTimeOffUse[]> {
+    try {
+      console.log(`[FlexClient] 휴가 범위 조회: ${startDate} ~ ${endDate}`);
+
+      // 날짜 범위 내의 각 날짜에 대해 휴가 정보 조회
+      const dates: string[] = [];
+      const current = new Date(startDate);
+      const end = new Date(endDate);
+
+      while (current <= end) {
+        dates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+
+      // 중복 제거를 위한 Map
+      const vacationMap = new Map<string, FlexTimeOffUse>();
+
+      for (const date of dates) {
+        const timeOffs = await this.getTimeOffUses(date, employeeNumbers);
+        timeOffs.forEach((timeOff) => {
+          const key = `${timeOff.employeeNumber}-${timeOff.startDate}-${timeOff.endDate}`;
+          if (!vacationMap.has(key)) {
+            vacationMap.set(key, timeOff);
+          }
+        });
+      }
+
+      const allVacations = Array.from(vacationMap.values());
+      console.log(`[FlexClient] 휴가 범위 조회 완료: ${allVacations.length}건`);
+      return allVacations;
+    } catch (error) {
+      console.error('[FlexClient] 휴가 범위 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 내일 휴가 시작하는 직원 조회
+   * @param tomorrow 내일 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 내일 휴가 시작하는 사원번호 목록
+   */
+  async getVacationStartingTomorrow(
+    tomorrow: string,
+    employeeNumbers: string[]
+  ): Promise<FlexTimeOffUse[]> {
+    try {
+      const timeOffs = await this.getTimeOffUses(tomorrow, employeeNumbers);
+      
+      // 내일이 휴가 시작일인 케이스만 필터링
+      const startingVacations = timeOffs.filter(
+        (timeOff) => timeOff.startDate === tomorrow
+      );
+
+      console.log(`[FlexClient] 내일(${tomorrow}) 휴가 시작: ${startingVacations.length}명`);
+      return startingVacations;
+    } catch (error) {
+      console.error('[FlexClient] 내일 휴가 시작 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 내일 휴가 종료 (복귀일) 직원 조회
+   * @param today 오늘 날짜 (YYYY-MM-DD)
+   * @param employeeNumbers 사원번호 목록
+   * @returns 내일 복귀하는 사원번호 목록
+   */
+  async getVacationEndingToday(
+    today: string,
+    employeeNumbers: string[]
+  ): Promise<FlexTimeOffUse[]> {
+    try {
+      const timeOffs = await this.getTimeOffUses(today, employeeNumbers);
+      
+      // 오늘이 휴가 종료일인 케이스만 필터링
+      const endingVacations = timeOffs.filter(
+        (timeOff) => timeOff.endDate === today
+      );
+
+      console.log(`[FlexClient] 오늘(${today}) 휴가 종료: ${endingVacations.length}명`);
+      return endingVacations;
+    } catch (error) {
+      console.error('[FlexClient] 휴가 종료 조회 실패:', error);
+      throw error;
+    }
+  }
 }
 
 // Singleton instance

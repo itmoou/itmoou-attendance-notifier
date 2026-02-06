@@ -1,6 +1,6 @@
-# Flex 근태 누락 알림 시스템
+# Flex 근태 누락 알림 시스템 + 휴가 관리 자동화
 
-Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근태 누락 알림 시스템입니다.
+Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근태 누락 알림 및 휴가 관리 시스템입니다.
 
 ## 📋 목차
 
@@ -21,7 +21,7 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 
 ## 개요
 
-이 시스템은 직원들의 출퇴근 체크 누락을 자동으로 감지하고, Microsoft Teams DM과 Outlook 이메일을 통해 알림을 전송합니다.
+이 시스템은 직원들의 출퇴근 체크 누락을 자동으로 감지하고, Microsoft Teams DM과 Outlook 이메일을 통해 알림을 전송합니다. 또한 휴가 신청 승인 시 자동으로 Outlook 캘린더에 일정을 등록하고, 휴가 현황을 Teams로 공지하며, 휴가 시작/종료 리마인더를 발송합니다.
 
 ### 핵심 특징
 
@@ -32,6 +32,9 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 - 🏖️ **휴가자 제외**: 휴가 중인 직원은 알림 대상에서 자동 제외
 - ⚠️ **만료 경고**: Refresh Token 만료 2일 전 자동 경고
 - 💾 **Conversation 저장**: Azure Table Storage를 통한 사용자별 대화 관리
+- 📅 **휴가 관리**: 휴가 승인 시 Outlook 캘린더 자동 연동
+- 🔔 **휴가 알림**: 휴가 시작/종료 리마인더 자동 발송
+- 📊 **휴가 현황**: 매일 아침 오늘 휴가자 Teams 공지
 
 ---
 
@@ -62,6 +65,28 @@ Flex OpenAPI + Microsoft Teams DM + Outlook을 기반으로 한 자동화된 근
 | 시간 | 동작 | 수신자 |
 |------|------|--------|
 | **09:00** | 전일 누락 리포트 (이메일) | hr@itmoou.com |
+
+### 5. 휴가 관리 (Phase 2 신규 기능) 🆕
+
+#### 5.1 휴가 승인 알림
+- **Webhook**: POST `/api/vacation/approved`
+- Flex에서 휴가 승인 시 호출
+- Teams Bot으로 승인 알림 발송
+- Outlook 개인 캘린더에 휴가 일정 자동 등록
+- 팀 공유 캘린더에 휴가 표시
+
+#### 5.2 매일 아침 휴가 현황 공지
+- **시간**: 평일 09:00
+- **대상**: HR 이메일 (hr@itmoou.com)
+- **내용**: 
+  - 오늘 휴가자 목록
+  - 이번 주 휴가 예정 현황
+
+#### 5.3 휴가 리마인더
+- **시간**: 평일 18:00
+- **내용**:
+  - 내일 휴가 시작하는 직원 → 본인과 HR에게 알림
+  - 오늘 휴가 종료 (내일 복귀) 직원 → 본인에게 복귀 리마인더
 
 ---
 
@@ -126,18 +151,30 @@ flex-attendance-alert/
 │       │   ├── flexClient.ts            # Flex API 클라이언트
 │       │   ├── teamsClient.ts           # Teams DM 클라이언트
 │       │   ├── outlookClient.ts         # Outlook 이메일 클라이언트
+│       │   ├── calendarClient.ts        # Outlook Calendar API 클라이언트 🆕
+│       │   ├── graphClient.ts           # Microsoft Graph 인증
 │       │   └── rules.ts                 # 알림 정책 및 비즈니스 로직
-│       └── timers/                      # Timer Functions
-│           ├── checkCheckIn/            # 출근 체크 (11:05, 11:30)
-│           │   ├── index.ts
-│           │   └── function.json
-│           ├── checkCheckOut/           # 퇴근 체크 (20:30, 22:00)
-│           │   ├── index.ts
-│           │   └── function.json
-│           ├── dailySummary/            # 당일 요약 (22:10)
-│           │   ├── index.ts
-│           │   └── function.json
-│           └── outlookReport/           # Outlook 리포트 (09:00)
+│       ├── timers/                      # Timer Functions
+│       │   ├── checkCheckIn/            # 출근 체크 (11:05, 11:30)
+│       │   │   ├── index.ts
+│       │   │   └── function.json
+│       │   ├── checkCheckOut/           # 퇴근 체크 (20:30, 22:00)
+│       │   │   ├── index.ts
+│       │   │   └── function.json
+│       │   ├── dailySummary/            # 당일 요약 (22:10)
+│       │   │   ├── index.ts
+│       │   │   └── function.json
+│       │   ├── outlookReport/           # Outlook 리포트 (09:00)
+│       │   │   ├── index.ts
+│       │   │   └── function.json
+│       │   ├── vacationAnnouncement/    # 휴가 현황 공지 (09:00) 🆕
+│       │   │   ├── index.ts
+│       │   │   └── function.json
+│       │   └── vacationReminder/        # 휴가 리마인더 (18:00) 🆕
+│       │       ├── index.ts
+│       │       └── function.json
+│       └── http/                        # HTTP Triggers
+│           └── vacationApproved/        # 휴가 승인 Webhook 🆕
 │               ├── index.ts
 │               └── function.json
 ├── package.json
@@ -599,7 +636,19 @@ ISC
 
 ## 변경 이력
 
-### v1.0.0 (2024-02-04)
+### v2.0.0 (2024-02-06) - Phase 2: 휴가 관리 자동화 🆕
+- **휴가 승인 알림**: Flex 휴가 승인 시 Teams Bot 알림 자동 발송
+- **Outlook 캘린더 연동**: 휴가 승인 시 개인/팀 캘린더에 자동 등록
+- **매일 휴가 현황 공지**: 평일 09:00에 오늘 휴가자 및 주간 휴가 현황 이메일 발송
+- **휴가 리마인더**: 
+  - 내일 휴가 시작하는 직원에게 알림 (평일 18:00)
+  - 내일 복귀하는 직원에게 리마인더 (평일 18:00)
+- **Flex API 휴가 조회 강화**: 
+  - 날짜 범위별 휴가 조회
+  - 휴가 시작/종료일 필터링
+- **새로운 API 엔드포인트**: POST `/api/vacation/approved` (휴가 승인 Webhook)
+
+### v1.0.0 (2024-02-04) - Phase 1: 근태 관리
 - 초기 버전 출시
 - Flex OpenAPI 연동
 - Microsoft Teams DM 알림
