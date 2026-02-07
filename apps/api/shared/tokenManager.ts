@@ -44,12 +44,14 @@ export async function getFlexAccessToken(): Promise<string> {
     console.log('[TokenManager] Token URL:', tokenUrl);
     console.log('[TokenManager] Refresh Token 앞 10자:', refreshToken.substring(0, 10) + '...');
     
-    const response = await axios.post(tokenUrl, {
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }, {
+    // OAuth2 표준: application/x-www-form-urlencoded 형식 사용
+    const params = new URLSearchParams();
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
+    
+    const response = await axios.post(tokenUrl, params, {
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
 

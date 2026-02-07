@@ -25,16 +25,23 @@ POST https://api.flex.team/oauth/token
 
 **Headers:**
 ```
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 ```
 
-**Request Body:**
+**Request Body:** (form-urlencoded)
+```
+grant_type=refresh_token&refresh_token=your_refresh_token
+```
+
+**또는 application/json 형식으로 보낼 경우:**
 ```json
 {
   "grant_type": "refresh_token",
   "refresh_token": "your_refresh_token"
 }
 ```
+
+**⚠️ 중요:** Flex API는 **application/x-www-form-urlencoded** 형식을 권장합니다.
 
 **Response:**
 ```json

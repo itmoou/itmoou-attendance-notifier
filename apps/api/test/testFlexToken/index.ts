@@ -29,6 +29,7 @@ async function testFlexTokenHandler(
     // Access Token 요청
     context.log('[TestFlexToken] ===== Access Token 요청 =====');
     context.log('[TestFlexToken] POST', tokenUrl);
+    context.log('[TestFlexToken] Content-Type: application/x-www-form-urlencoded');
     context.log('[TestFlexToken] Request Body:', {
       grant_type: 'refresh_token',
       refresh_token: refreshToken.substring(0, 20) + '...(생략)',
@@ -36,18 +37,19 @@ async function testFlexTokenHandler(
 
     const startTime = Date.now();
     
+    // OAuth2 표준: application/x-www-form-urlencoded 형식 사용
+    const params = new URLSearchParams();
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
+    
     let response;
     try {
       response = await axios.post(
         tokenUrl,
-        {
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-        },
+        params,
         {
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
           timeout: 15000,
         }
