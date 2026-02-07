@@ -51,8 +51,11 @@ export async function createVacationEvent(
     const graphBaseUrl = process.env.GRAPH_API_BASE_URL || 'https://graph.microsoft.com/v1.0';
 
     // 시작일과 종료일을 ISO 8601 형식으로 변환 (종일 이벤트)
+    // 종일 이벤트는 종료일의 다음날 00:00:00으로 설정해야 함
     const startDateTime = `${params.startDate}T00:00:00`;
-    const endDateTime = `${params.endDate}T23:59:59`;
+    const endDate = new Date(params.endDate);
+    endDate.setDate(endDate.getDate() + 1);
+    const endDateTime = `${endDate.toISOString().split('T')[0]}T00:00:00`;
 
     const event: CalendarEvent = {
       subject: `[휴가] ${params.employeeName} - ${params.vacationType}`,
@@ -121,7 +124,9 @@ export async function createTeamVacationEvent(
     const graphBaseUrl = process.env.GRAPH_API_BASE_URL || 'https://graph.microsoft.com/v1.0';
 
     const startDateTime = `${params.startDate}T00:00:00`;
-    const endDateTime = `${params.endDate}T23:59:59`;
+    const endDate = new Date(params.endDate);
+    endDate.setDate(endDate.getDate() + 1);
+    const endDateTime = `${endDate.toISOString().split('T')[0]}T00:00:00`;
 
     const event: CalendarEvent = {
       subject: `[휴가] ${params.employeeName} - ${params.vacationType}`,
