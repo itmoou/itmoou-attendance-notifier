@@ -3,9 +3,22 @@ const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:7071/api'
   : 'https://itmoou-attendance-func.azurewebsites.net/api';
 
-// Function Key (보안상 환경변수로 관리하거나 인증 토큰 사용 권장)
-// 실제 배포 시에는 Azure AD 인증 등을 사용해야 합니다
-const FUNCTION_KEY = ''; // Azure Portal에서 확인한 Function Key를 여기에 입력
+// Function Key 가져오기 (URL 파라미터 또는 환경변수)
+// 사용법: https://your-site.com/?key=YOUR_FUNCTION_KEY
+function getFunctionKey() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const keyFromUrl = urlParams.get('key');
+  
+  if (keyFromUrl) {
+    // URL에서 Function Key 사용
+    return keyFromUrl;
+  }
+  
+  // 기본 Function Key (비어있으면 에러 표시)
+  return '';
+}
+
+const FUNCTION_KEY = getFunctionKey();
 
 // 현재 표시 중인 년/월
 let currentYear = new Date().getFullYear();
@@ -27,6 +40,24 @@ const loadingEl = document.getElementById('loading');
 
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
+  // Function Key 체크
+  if (!FUNCTION_KEY) {
+    const keyPrompt = confirm(
+      '휴가 캘린더를 사용하려면 Function Key가 필요합니다.\n\n' +
+      'URL에 ?key=YOUR_FUNCTION_KEY 를 추가해주세요.\n\n' +
+      '예: https://vacation-calendar.com/?key=ABC123...\n\n' +
+      '지금 입력하시겠습니까?'
+    );
+    
+    if (keyPrompt) {
+      const inputKey = prompt('Function Key를 입력하세요:');
+      if (inputKey) {
+        window.location.href = window.location.pathname + '?key=' + encodeURIComponent(inputKey);
+        return;
+      }
+    }
+  }
+
   renderCalendar();
   loadVacationData();
 
