@@ -104,6 +104,7 @@ export function validateStorageEnvs(): { connectionString: string } {
 
 /**
  * Microsoft Graph API 관련 필수 환경변수 검증
+ * Bot 환경변수를 fallback으로 사용
  */
 export function validateGraphEnvs(): {
   tenantId: string;
@@ -111,10 +112,15 @@ export function validateGraphEnvs(): {
   clientSecret: string;
   baseUrl: string;
 } {
-  const tenantId = requireEnv('AZURE_TENANT_ID');
-  const clientId = requireEnv('AZURE_CLIENT_ID');
-  const clientSecret = requireEnv('AZURE_CLIENT_SECRET');
+  // AZURE_* 또는 BOT_* 환경변수 사용 (fallback)
+  const tenantId = process.env.AZURE_TENANT_ID || requireEnv('BOT_TENANT_ID');
+  const clientId = process.env.AZURE_CLIENT_ID || requireEnv('BOT_APP_ID');
+  const clientSecret = process.env.AZURE_CLIENT_SECRET || requireEnv('BOT_APP_PASSWORD');
   const baseUrl = requireEnv('GRAPH_API_BASE_URL', 'https://graph.microsoft.com/v1.0');
+  
+  console.log('[EnvUtil] Graph API 환경변수 검증 완료');
+  console.log(`[EnvUtil] Tenant ID: ${tenantId}`);
+  console.log(`[EnvUtil] Client ID: ${clientId}`);
   
   return { tenantId, clientId, clientSecret, baseUrl };
 }
