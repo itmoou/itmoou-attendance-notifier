@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
   "version": "1.0.0",
-  "id": "com.itmoou.vacation-calendar",
-  "packageName": "com.itmoou.vacation-calendar",
+  "id": "com.itmoou.vacation-list",
+  "packageName": "com.itmoou.vacation-list",
   "developer": {
     "name": "ITMOOU",
     "websiteUrl": "https://itmoou.com",
@@ -11,12 +11,12 @@
     "termsOfUseUrl": "https://itmoou.com/terms"
   },
   "name": {
-    "short": "휴가자 현황",
-    "full": "ITMOOU 휴가자 현황 목록"
+    "short": "휴가 현황",
+    "full": "ITMOOU 휴가자 현황"
   },
   "description": {
-    "short": "팀 휴가자 목록을 검색하고 확인하세요",
-    "full": "ITMOOU 팀원들의 휴가 일정을 테이블 형태로 확인할 수 있는 앱입니다. 부서, 사원명, 휴가 유형, 날짜로 검색할 수 있습니다."
+    "short": "팀 휴가 현황 확인",
+    "full": "ITMOOU 팀원들의 휴가 일정을 확인하고 검색할 수 있는 앱입니다."
   },
   "icons": {
     "color": "icon-color.png",
@@ -25,10 +25,9 @@
   "accentColor": "#4A90E2",
   "staticTabs": [
     {
-      "entityId": "vacation-list-tab",
-      "name": "휴가자 현황",
-      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg%3D%3D",
-      "websiteUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg%3D%3D",
+      "entityId": "vacation-tab",
+      "name": "휴가 현황",
+      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg%3D%3D",
       "scopes": ["personal"]
     }
   ],
