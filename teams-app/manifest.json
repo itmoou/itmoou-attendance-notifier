@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
   "version": "1.0.0",
-  "id": "com.itmoou.vacation-list",
+  "id": "a1317228-84f3-4646-8a6d-fe2c923d0e46",
   "packageName": "com.itmoou.vacation-list",
   "developer": {
     "name": "ITMOOU",
@@ -28,7 +28,9 @@
       "entityId": "vacation-tab",
       "name": "휴가 현황",
       "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg%3D%3D",
-      "scopes": ["personal"]
+      "scopes": [
+        "personal"
+      ]
     }
   ],
   "permissions": [
