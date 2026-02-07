@@ -3,35 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ITMOOU - 휴가 현황 캘린더</title>
+  <title>ITMOOU - 휴가자 현황</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🏖️ ITMOOU 휴가 현황</h1>
-      <p class="subtitle">직원들의 휴가 일정을 한눈에 확인하세요</p>
+      <h1>🏖️ ITMOOU 휴가자 현황</h1>
+      <p class="subtitle">직원들의 휴가 일정을 검색하고 확인하세요</p>
     </header>
 
-    <div class="controls">
-      <button id="prevMonth" class="btn btn-secondary">◀ 이전 달</button>
-      <h2 id="currentMonth">2024년 2월</h2>
-      <button id="nextMonth" class="btn btn-secondary">다음 달 ▶</button>
-    </div>
+    <!-- 검색 필터 -->
+    <div class="filter-section">
+      <h3>🔍 검색 필터</h3>
+      <div class="filter-controls">
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>부서</label>
+            <select id="filterDepartment">
+              <option value="">전체</option>
+              <!-- 부서 옵션은 동적으로 추가 -->
+            </select>
+          </div>
 
-    <div class="calendar-wrapper">
-      <div class="calendar" id="calendar">
-        <!-- 달력이 여기에 동적으로 생성됩니다 -->
+          <div class="filter-item">
+            <label>사원명</label>
+            <input type="text" id="filterEmployee" placeholder="사원명 입력">
+          </div>
+
+          <div class="filter-item">
+            <label>휴가 유형</label>
+            <select id="filterVacationType">
+              <option value="">전체</option>
+              <option value="연차">연차</option>
+              <option value="반차">반차</option>
+              <option value="병가">병가</option>
+              <option value="경조사">경조사</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>날짜 범위</label>
+            <div class="date-range">
+              <input type="date" id="filterStartDate">
+              <span>~</span>
+              <input type="date" id="filterEndDate">
+            </div>
+          </div>
+
+          <div class="filter-actions">
+            <button id="btnSearch" class="btn btn-primary">🔍 검색</button>
+            <button id="btnReset" class="btn btn-secondary">🔄 초기화</button>
+            <button id="btnRefresh" class="btn btn-secondary">↻ 새로고침</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="vacation-details" id="vacationDetails" style="display: none;">
-      <div class="details-header">
-        <h3 id="selectedDate">선택된 날짜</h3>
-        <button id="closeDetails" class="btn-close">✕</button>
+    <!-- 휴가자 테이블 -->
+    <div class="table-section">
+      <div class="table-header">
+        <h3>📊 휴가자 목록</h3>
+        <span id="totalCount" class="count-badge">총 0명</span>
       </div>
-      <div id="vacationList" class="vacation-list">
-        <!-- 휴가자 목록이 여기에 표시됩니다 -->
+
+      <div class="table-wrapper">
+        <table id="vacationTable">
+          <thead>
+            <tr>
+              <th>번호</th>
+              <th>부서명</th>
+              <th>사원명</th>
+              <th>휴가 유형</th>
+              <th>시작일</th>
+              <th>종료일</th>
+              <th>기간</th>
+            </tr>
+          </thead>
+          <tbody id="vacationTableBody">
+            <!-- 데이터가 여기에 동적으로 추가됩니다 -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <p>📭 휴가 데이터가 없습니다.</p>
+        <p class="hint">날짜 범위를 조정하거나 필터를 변경해보세요.</p>
       </div>
     </div>
 
