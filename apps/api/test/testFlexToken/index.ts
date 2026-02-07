@@ -32,14 +32,17 @@ async function testFlexTokenHandler(
     context.log('[TestFlexToken] Content-Type: application/x-www-form-urlencoded');
     context.log('[TestFlexToken] Request Body:', {
       grant_type: 'refresh_token',
+      client_id: 'open-api',
       refresh_token: refreshToken.substring(0, 20) + '...(생략)',
     });
 
     const startTime = Date.now();
     
     // OAuth2 표준: application/x-www-form-urlencoded 형식 사용
+    // Flex API 문서: client_id=open-api 필수
     const params = new URLSearchParams();
     params.append('grant_type', 'refresh_token');
+    params.append('client_id', 'open-api');
     params.append('refresh_token', refreshToken);
     
     let response;
@@ -50,6 +53,7 @@ async function testFlexTokenHandler(
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
           },
           timeout: 15000,
         }

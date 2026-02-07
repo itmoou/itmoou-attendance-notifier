@@ -2,8 +2,11 @@
  * Token Manager
  * Flex API Access Token 자동 관리
  * 
- * Flex OpenAPI는 Client ID/Secret을 사용하지 않음
- * Refresh Token만으로 Access Token을 재발급받음
+ * Flex OpenAPI 인증 방식:
+ * - client_id: 'open-api' (고정값)
+ * - grant_type: 'refresh_token'
+ * - refresh_token: 발급받은 Refresh Token
+ * - Content-Type: application/x-www-form-urlencoded
  */
 
 import axios from 'axios';
@@ -45,13 +48,16 @@ export async function getFlexAccessToken(): Promise<string> {
     console.log('[TokenManager] Refresh Token 앞 10자:', refreshToken.substring(0, 10) + '...');
     
     // OAuth2 표준: application/x-www-form-urlencoded 형식 사용
+    // Flex API 문서: client_id=open-api 필수
     const params = new URLSearchParams();
     params.append('grant_type', 'refresh_token');
+    params.append('client_id', 'open-api');
     params.append('refresh_token', refreshToken);
     
     const response = await axios.post(tokenUrl, params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
     });
 
