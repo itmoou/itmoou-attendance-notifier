@@ -171,7 +171,40 @@ class FlexClient {
         },
       });
 
-      const timeOffs: FlexTimeOffUse[] = response.data || [];
+      // Flex API 응답 구조 디버깅
+      console.log(`[FlexClient] 휴가 정보 응답 타입: ${typeof response.data}`);
+      console.log(`[FlexClient] 휴가 정보 응답 데이터:`, JSON.stringify(response.data, null, 2));
+
+      // Flex API는 배열 또는 객체를 반환할 수 있음
+      let timeOffs: FlexTimeOffUse[] = [];
+      
+      if (Array.isArray(response.data)) {
+        // 응답이 배열인 경우
+        timeOffs = response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 응답이 객체인 경우 (예: { timeOffs: [...], data: [...], items: [...] })
+        if (response.data.timeOffs && Array.isArray(response.data.timeOffs)) {
+          timeOffs = response.data.timeOffs;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          timeOffs = response.data.data;
+        } else if (response.data.items && Array.isArray(response.data.items)) {
+          timeOffs = response.data.items;
+        } else {
+          // 객체의 모든 키 확인
+          const keys = Object.keys(response.data);
+          console.warn(`[FlexClient] 예상하지 못한 응답 구조. 사용 가능한 키: ${keys.join(', ')}`);
+          
+          // 첫 번째 배열 속성 사용
+          for (const key of keys) {
+            if (Array.isArray(response.data[key])) {
+              timeOffs = response.data[key];
+              console.log(`[FlexClient] '${key}' 속성을 휴가 데이터로 사용`);
+              break;
+            }
+          }
+        }
+      }
+
       console.log(`[FlexClient] 휴가 정보 조회 완료: ${timeOffs.length}건`);
       return timeOffs;
     } catch (error) {
