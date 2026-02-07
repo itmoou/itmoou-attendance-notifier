@@ -41,12 +41,21 @@ export async function getFlexAccessToken(): Promise<string> {
   const { refreshToken, tokenUrl } = validateFlexEnvs();
 
   try {
+    console.log('[TokenManager] Token URL:', tokenUrl);
+    console.log('[TokenManager] Refresh Token 앞 10자:', refreshToken.substring(0, 10) + '...');
+    
     const response = await axios.post(tokenUrl, {
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    const { access_token, expires_in } = response.data;
+    console.log('[TokenManager] 응답 전체:', JSON.stringify(response.data, null, 2));
+
+    const { access_token, refresh_token: newRefreshToken, expires_in } = response.data;
 
     if (!access_token) {
       throw new Error('Access Token을 받지 못했습니다.');
@@ -62,12 +71,31 @@ export async function getFlexAccessToken(): Promise<string> {
 
     console.log(`[TokenManager] Access Token 재발급 완료 (유효기간: ${expires_in}초)`);
     
+    // 새로운 Refresh Token이 있으면 경고 (환경변수 업데이트 필요)
+    if (newRefreshToken && newRefreshToken !== refreshToken) {
+      console.warn('[TokenManager] ⚠️ 새로운 Refresh Token 발급됨!');
+      console.warn('[TokenManager] 새 Refresh Token 앞 10자:', newRefreshToken.substring(0, 10) + '...');
+      console.warn('[TokenManager] Azure Portal에서 FLEX_REFRESH_TOKEN 환경변수를 업데이트하세요:');
+      console.warn('[TokenManager] Function App → Configuration → FLEX_REFRESH_TOKEN');
+      
+      // TODO: Azure Key Vault 또는 App Configuration을 통한 자동 업데이트 구현
+      // 현재는 수동으로 환경변수 업데이트 필요
+    } else {
+      console.log('[TokenManager] Refresh Token 변경 없음 (재사용 가능)');
+    }
+    
     return cachedAccessToken;
   } catch (error: any) {
     console.error('[TokenManager] Access Token 재발급 실패:', error.message);
     if (error.response) {
       console.error('[TokenManager] 응답 상태:', error.response.status);
-      console.error('[TokenManager] 응답 데이터:', error.response.data);
+      console.error('[TokenManager] 응답 데이터:', JSON.stringify(error.response.data, null, 2));
+      console.error('[TokenManager] 응답 헤더:', JSON.stringify(error.response.headers, null, 2));
+    }
+    if (error.request) {
+      console.error('[TokenManager] 요청 URL:', error.config?.url);
+      console.error('[TokenManager] 요청 Method:', error.config?.method);
+      console.error('[TokenManager] 요청 Data:', JSON.stringify(error.config?.data, null, 2));
     }
     throw new Error('Flex API Access Token 재발급 실패');
   }
