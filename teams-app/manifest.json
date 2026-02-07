@@ -27,8 +27,8 @@
     {
       "entityId": "vacation-list-tab",
       "name": "휴가자 현황",
-      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=FUNCTION_KEY_HERE",
-      "websiteUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=FUNCTION_KEY_HERE",
+      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg==",
+      "websiteUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg==",
       "scopes": ["personal"]
     }
   ],
