@@ -27,8 +27,8 @@
     {
       "entityId": "vacation-list-tab",
       "name": "휴가자 현황",
-      "contentUrl": "https://DEPLOYMENT_URL/index.html?key=FUNCTION_KEY",
-      "websiteUrl": "https://DEPLOYMENT_URL/index.html?key=FUNCTION_KEY",
+      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=FUNCTION_KEY_HERE",
+      "websiteUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/index.html?key=FUNCTION_KEY_HERE",
       "scopes": ["personal"]
     }
   ],
@@ -37,7 +37,7 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "itmoou-vacation-calendar.azurestaticapps.net",
-    "itmoou-attendance-func.azurewebsites.net"
+    "delightful-beach-0fa09b00f.2.azurestaticapps.net",
+    "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net"
   ]
 }
