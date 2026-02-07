@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:7071/api'
-  : 'https://itmoou-attendance-func.azurewebsites.net/api';
+  : 'https://itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net/api';
 
 // Function Key 가져오기 (URL 파라미터 또는 환경변수)
 function getFunctionKey() {
