@@ -5,6 +5,7 @@ yarn.lock
 # Build output
 dist/
 *.js
+!public/**/*.js
 *.js.map
 
 # Azure Functions

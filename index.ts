@@ -12,6 +12,7 @@
 import './apps/api/bot/messages/index';
 import './apps/api/test/sendTestEmail/index';
 import './apps/api/http/vacationApproved/index';
+import './apps/api/http/vacationCalendar/index';
 
 // Timer Functions
 import './apps/api/timers/checkCheckIn/index';
