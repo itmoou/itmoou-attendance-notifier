@@ -27,7 +27,7 @@
     {
       "entityId": "vacation-tab",
       "name": "휴가 현황",
-      "contentUrl": "https://delightful-beach-0fa09b00f.2.azurestaticapps.net/?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg%3D%3D",
+      "contentUrl": "https://delightful-beach-07a090e00.2.azurestaticapps.net/?key=cdJOT21cx8_gzwvGhhWAR5_EodkPeAG-vIecIBVCBFRGAzFuB6oIqg==",
       "scopes": [
         "personal"
       ]
@@ -38,7 +38,7 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "delightful-beach-0fa09b00f.2.azurestaticapps.net",
+    "delightful-beach-07a090e00.2.azurestaticapps.net",
     "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net"
   ]
 }
