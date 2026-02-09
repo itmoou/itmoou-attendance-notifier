@@ -9,6 +9,14 @@ import {
   saveConversationReference,
   ensureTableExists,
 } from '../../shared/storage/teamsConversationRepo';
+import {
+  ensurePermissionTableExists,
+  addAuthorizedUser,
+  removeAuthorizedUser,
+  listAuthorizedUsers,
+  isUserAuthorizedInStorage,
+  isSuperAdmin,
+} from '../../shared/storage/hrBotPermissionRepo';
 import sharepointClient from '../../shared/sharepointClient';
 
 interface Activity {
@@ -106,26 +114,11 @@ function verifyActivitySignature(req: HttpRequest): boolean {
 }
 
 /**
- * 사용자 권한 확인
- * HR_BOT_ALLOWED_USERS 환경 변수에 설정된 사용자만 접근 허용
+ * 사용자 이메일 추출
  */
-function isUserAuthorized(activity: Activity, context: InvocationContext): boolean {
-  const allowedUsersEnv = process.env.HR_BOT_ALLOWED_USERS || '';
-
-  if (!allowedUsersEnv) {
-    context.warn('[HRBotMessages] HR_BOT_ALLOWED_USERS 환경 변수가 설정되지 않았습니다. 모든 사용자 허용.');
-    return true;
-  }
-
-  // 쉼표로 구분된 이메일 목록 (예: user1@itmoou.com,user2@itmoou.com)
-  const allowedUsers = allowedUsersEnv.split(',').map(u => u.trim().toLowerCase());
-
-  // 사용자 식별 정보 추출
-  const aadObjectId = activity.from?.aadObjectId?.toLowerCase();
-  const userName = activity.from?.name?.toLowerCase();
-
+function getUserEmail(activity: Activity, context: InvocationContext): string | null {
   // channelData에서 이메일 추출 시도 (Teams의 경우)
-  let userEmail: string | undefined;
+  let userEmail: string | null = null;
   try {
     if (activity.channelData?.user?.email) {
       userEmail = activity.channelData.user.email.toLowerCase();
@@ -136,22 +129,38 @@ function isUserAuthorized(activity: Activity, context: InvocationContext): boole
     context.log('[HRBotMessages] channelData에서 이메일 추출 실패');
   }
 
+  return userEmail;
+}
+
+/**
+ * 사용자 권한 확인
+ * 1. Super Admin 체크 (환경 변수)
+ * 2. Table Storage 권한 체크
+ */
+async function isUserAuthorized(activity: Activity, context: InvocationContext): Promise<boolean> {
+  const userEmail = getUserEmail(activity, context);
+  const aadObjectId = activity.from?.aadObjectId?.toLowerCase();
+  const userName = activity.from?.name?.toLowerCase();
+
   context.log(`[HRBotMessages] 사용자 확인 - AAD: ${aadObjectId}, Email: ${userEmail}, Name: ${userName}`);
 
-  // AAD Object ID, 이메일, 이름 중 하나라도 허용 목록에 있으면 승인
-  const isAuthorized = allowedUsers.some(allowed => {
-    return (
-      (aadObjectId && aadObjectId.includes(allowed)) ||
-      (userEmail && (userEmail === allowed || userEmail.includes(allowed))) ||
-      (userName && userName.includes(allowed))
-    );
-  });
-
-  if (!isAuthorized) {
-    context.warn(`[HRBotMessages] 권한 없는 사용자 접근 시도 - AAD: ${aadObjectId}, Email: ${userEmail}`);
+  // Super Admin 체크
+  if (userEmail && isSuperAdmin(userEmail)) {
+    context.log(`[HRBotMessages] Super Admin 접근: ${userEmail}`);
+    return true;
   }
 
-  return isAuthorized;
+  // Table Storage 권한 체크
+  if (userEmail) {
+    const isAuthorized = await isUserAuthorizedInStorage(userEmail);
+    if (isAuthorized) {
+      context.log(`[HRBotMessages] 권한 있는 사용자 접근: ${userEmail}`);
+      return true;
+    }
+  }
+
+  context.warn(`[HRBotMessages] 권한 없는 사용자 접근 시도 - Email: ${userEmail}`);
+  return false;
 }
 
 /**
@@ -209,6 +218,7 @@ async function hrBotMessagesHandler(
     }
 
     await ensureTableExists();
+    await ensurePermissionTableExists();
 
     const bodyText = await req.text();
     const activity: Activity = JSON.parse(bodyText);
@@ -246,11 +256,13 @@ async function handleMessage(
   const aadObjectId = activity.from?.aadObjectId || null;
   const teamsUserId = activity.from?.id || null;
   const userUpn = aadObjectId;
+  const userEmail = getUserEmail(activity, context);
 
-  context.log(`[HRBotMessages] 메시지: "${text}" from ${userUpn}`);
+  context.log(`[HRBotMessages] 메시지: "${text}" from ${userEmail || userUpn}`);
 
   // 사용자 권한 확인
-  if (!isUserAuthorized(activity, context)) {
+  const isAuthorized = await isUserAuthorized(activity, context);
+  if (!isAuthorized) {
     const unauthorizedText = `
 🔒 **접근 권한이 없습니다**
 
@@ -278,21 +290,37 @@ async function handleMessage(
 
   // 명령어 처리
   let replyText = '';
-
   const lowerText = text.toLowerCase();
 
-  if (lowerText.includes('리포트') || lowerText.includes('근태')) {
-    // 근태 리포트 명령어
-    replyText = await handleAttendanceReportCommand(context);
-  } else if (lowerText.includes('휴가')) {
-    // 휴가 현황 명령어
-    replyText = await handleVacationReportCommand(context);
-  } else if (lowerText.includes('도움말') || lowerText.includes('help') || lowerText.includes('명령어')) {
-    // 도움말 명령어
-    replyText = getHelpMessage();
-  } else {
-    // 기본 환영 메시지
-    replyText = getWelcomeMessage();
+  // Super Admin 여부 확인
+  const isSuperAdminUser = !!(userEmail && isSuperAdmin(userEmail));
+
+  // Super Admin 전용 명령어
+  if (isSuperAdminUser) {
+    if (lowerText.startsWith('권한부여')) {
+      replyText = await handleGrantPermissionCommand(text, userEmail!, context);
+    } else if (lowerText.startsWith('권한제거')) {
+      replyText = await handleRevokePermissionCommand(text, context);
+    } else if (lowerText === '권한목록') {
+      replyText = await handleListPermissionsCommand(context);
+    }
+  }
+
+  // 일반 명령어
+  if (!replyText) {
+    if (lowerText.includes('리포트') || lowerText.includes('근태')) {
+      // 근태 리포트 명령어
+      replyText = await handleAttendanceReportCommand(context);
+    } else if (lowerText.includes('휴가')) {
+      // 휴가 현황 명령어
+      replyText = await handleVacationReportCommand(context);
+    } else if (lowerText.includes('도움말') || lowerText.includes('help') || lowerText.includes('명령어')) {
+      // 도움말 명령어
+      replyText = getHelpMessage(isSuperAdminUser);
+    } else {
+      // 기본 환영 메시지
+      replyText = getWelcomeMessage(isSuperAdminUser);
+    }
   }
 
   await sendActivity(activity, {
@@ -316,7 +344,8 @@ async function handleConversationUpdate(
       context.log(`[HRBotMessages] 새 사용자: ${member.name}`);
 
       // 사용자 권한 확인
-      if (!isUserAuthorized(activity, context)) {
+      const isAuthorized = await isUserAuthorized(activity, context);
+      if (!isAuthorized) {
         const unauthorizedText = `
 🔒 **접근 권한이 없습니다**
 
@@ -338,6 +367,7 @@ async function handleConversationUpdate(
       const aadObjectId = activity.from?.aadObjectId || null;
       const teamsUserId = activity.from?.id || null;
       const userUpn = aadObjectId;
+      const userEmail = getUserEmail(activity, context);
 
       const conversationRef = getConversationReference(activity);
 
@@ -345,7 +375,8 @@ async function handleConversationUpdate(
         await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef as any);
       }
 
-      const welcomeText = getWelcomeMessage();
+      const isSuperAdminUser = !!(userEmail && isSuperAdmin(userEmail));
+      const welcomeText = getWelcomeMessage(isSuperAdminUser);
 
       await sendActivity(activity, {
         type: 'message',
@@ -361,8 +392,8 @@ async function handleConversationUpdate(
 /**
  * 환영 메시지
  */
-function getWelcomeMessage(): string {
-  return `
+function getWelcomeMessage(isSuperAdminUser: boolean = false): string {
+  let message = `
 **ITMOOU HR 관리 봇**
 
 안녕하세요! 👋
@@ -377,17 +408,29 @@ function getWelcomeMessage(): string {
 💡 **명령어:**
 - "리포트" 또는 "근태리포트" - 최근 근태 리포트 보기
 - "휴가" 또는 "휴가현황" - 최근 휴가 현황 보기
-- "도움말" - 명령어 목록 보기
+- "도움말" - 명령어 목록 보기`;
 
-🔒 이 봇은 HR 관리자만 사용할 수 있습니다.
-`.trim();
+  if (isSuperAdminUser) {
+    message += `
+
+🔧 **관리자 명령어:**
+- "권한부여 user@itmoou.com" - 사용자 권한 부여
+- "권한제거 user@itmoou.com" - 사용자 권한 제거
+- "권한목록" - 권한 있는 사용자 목록 보기`;
+  }
+
+  message += `
+
+🔒 이 봇은 HR 관리자만 사용할 수 있습니다.`;
+
+  return message.trim();
 }
 
 /**
  * 도움말 메시지
  */
-function getHelpMessage(): string {
-  return `
+function getHelpMessage(isSuperAdminUser: boolean = false): string {
+  let message = `
 **📋 HR Bot 사용 가능한 명령어**
 
 🔍 **문서 검색:**
@@ -400,10 +443,173 @@ function getHelpMessage(): string {
 📊 **제공 기능:**
 - SharePoint에 저장된 근태 리포트 조회
 - SharePoint에 저장된 휴가 현황 조회
-- 직접 링크 제공으로 빠른 접근
+- 직접 링크 제공으로 빠른 접근`;
 
-🔒 이 봇은 HR 관리자 전용입니다.
+  if (isSuperAdminUser) {
+    message += `
+
+🔧 **관리자 전용 명령어:**
+- "권한부여 user@itmoou.com" - 사용자에게 봇 사용 권한 부여
+- "권한제거 user@itmoou.com" - 사용자의 봇 사용 권한 제거
+- "권한목록" - 현재 권한이 있는 모든 사용자 목록 보기
+
+💡 **권한 관리 예시:**
+\`\`\`
+권한부여 kim@itmoou.com
+권한제거 lee@itmoou.com
+권한목록
+\`\`\``;
+  }
+
+  message += `
+
+🔒 이 봇은 HR 관리자 전용입니다.`;
+
+  return message.trim();
+}
+
+/**
+ * 권한 부여 명령어 처리 (Super Admin 전용)
+ */
+async function handleGrantPermissionCommand(
+  text: string,
+  grantedBy: string,
+  context: InvocationContext
+): Promise<string> {
+  try {
+    // "권한부여 user@itmoou.com" 형식에서 이메일 추출
+    const parts = text.trim().split(/\s+/);
+    if (parts.length < 2) {
+      return `
+❌ **사용법 오류**
+
+올바른 사용법: \`권한부여 user@itmoou.com\`
+
+예시:
+\`\`\`
+권한부여 kim@itmoou.com
+\`\`\`
 `.trim();
+    }
+
+    const targetEmail = parts[1].trim().toLowerCase();
+
+    // 이메일 형식 간단 검증
+    if (!targetEmail.includes('@')) {
+      return `
+❌ **이메일 형식 오류**
+
+올바른 이메일 주소를 입력해주세요.
+
+예시: \`권한부여 kim@itmoou.com\`
+`.trim();
+    }
+
+    await addAuthorizedUser(targetEmail, grantedBy);
+
+    return `
+✅ **권한 부여 완료**
+
+사용자: ${targetEmail}
+부여자: ${grantedBy}
+
+해당 사용자가 이제 HR Bot을 사용할 수 있습니다.
+`.trim();
+  } catch (error: any) {
+    context.error('[HRBotMessages] 권한 부여 실패:', error);
+    return `
+❌ **오류**
+
+권한 부여 중 오류가 발생했습니다.
+잠시 후 다시 시도해주세요.
+`.trim();
+  }
+}
+
+/**
+ * 권한 제거 명령어 처리 (Super Admin 전용)
+ */
+async function handleRevokePermissionCommand(
+  text: string,
+  context: InvocationContext
+): Promise<string> {
+  try {
+    // "권한제거 user@itmoou.com" 형식에서 이메일 추출
+    const parts = text.trim().split(/\s+/);
+    if (parts.length < 2) {
+      return `
+❌ **사용법 오류**
+
+올바른 사용법: \`권한제거 user@itmoou.com\`
+
+예시:
+\`\`\`
+권한제거 kim@itmoou.com
+\`\`\`
+`.trim();
+    }
+
+    const targetEmail = parts[1].trim().toLowerCase();
+
+    await removeAuthorizedUser(targetEmail);
+
+    return `
+✅ **권한 제거 완료**
+
+사용자: ${targetEmail}
+
+해당 사용자의 HR Bot 접근 권한이 제거되었습니다.
+`.trim();
+  } catch (error: any) {
+    context.error('[HRBotMessages] 권한 제거 실패:', error);
+    return `
+❌ **오류**
+
+권한 제거 중 오류가 발생했습니다.
+잠시 후 다시 시도해주세요.
+`.trim();
+  }
+}
+
+/**
+ * 권한 목록 조회 명령어 처리 (Super Admin 전용)
+ */
+async function handleListPermissionsCommand(context: InvocationContext): Promise<string> {
+  try {
+    const users = await listAuthorizedUsers();
+
+    if (users.length === 0) {
+      return `
+📋 **권한 있는 사용자 목록**
+
+현재 권한이 부여된 사용자가 없습니다.
+
+\`권한부여 user@itmoou.com\` 명령어로 사용자를 추가할 수 있습니다.
+`.trim();
+    }
+
+    let message = `
+📋 **권한 있는 사용자 목록** (총 ${users.length}명)
+
+`;
+
+    users.forEach((user, idx) => {
+      const grantedAt = new Date(user.grantedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+      message += `${idx + 1}. ${user.email}\n   - 부여자: ${user.grantedBy}\n   - 부여일: ${grantedAt}\n\n`;
+    });
+
+    message += `💡 사용자 제거: \`권한제거 user@itmoou.com\``;
+
+    return message.trim();
+  } catch (error: any) {
+    context.error('[HRBotMessages] 권한 목록 조회 실패:', error);
+    return `
+❌ **오류**
+
+권한 목록을 조회하는 중 오류가 발생했습니다.
+잠시 후 다시 시도해주세요.
+`.trim();
+  }
 }
 
 /**
