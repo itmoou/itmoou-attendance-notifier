@@ -11,6 +11,7 @@ import {
   ensureTableExists,
 } from '../../shared/storage/teamsConversationRepo';
 import { validateBotEnvs } from '../../shared/utils/envUtil';
+import sharepointClient from '../../shared/sharepointClient';
 
 interface Activity {
   type: string;
@@ -201,13 +202,45 @@ async function handleMessage(
   context.log(`[BotMessages] 메시지: "${text}" from ${userUpn}`);
 
   const conversationRef = getConversationReference(activity);
-  
+
   if (aadObjectId || userUpn || teamsUserId) {
     await saveConversationReference(aadObjectId, userUpn, teamsUserId, conversationRef as any);
     context.log('[BotMessages] Conversation Reference 저장');
   }
 
-  const replyText = `
+  // 명령어 처리
+  let replyText = '';
+
+  const lowerText = text.toLowerCase();
+
+  if (lowerText.includes('리포트') || lowerText.includes('근태')) {
+    // 근태 리포트 명령어
+    replyText = await handleAttendanceReportCommand(context);
+  } else if (lowerText.includes('휴가')) {
+    // 휴가 현황 명령어
+    replyText = await handleVacationReportCommand(context);
+  } else if (lowerText.includes('도움말') || lowerText.includes('help') || lowerText.includes('명령어')) {
+    // 도움말 명령어
+    replyText = getHelpMessage();
+  } else {
+    // 기본 환영 메시지
+    replyText = getWelcomeMessage();
+  }
+
+  await sendActivity(activity, {
+    type: 'message',
+    text: replyText,
+    from: activity.recipient,
+    recipient: activity.from,
+    conversation: activity.conversation,
+  });
+}
+
+/**
+ * 환영 메시지
+ */
+function getWelcomeMessage(): string {
+  return `
 **근태알림(자동 알림) / 회신 불필요**
 
 안녕하세요! 👋
@@ -219,16 +252,149 @@ async function handleMessage(
 - 퇴근 체크 누락 시 (20:30, 22:00)
 - 당일 누적 요약 (22:10)
 
+💡 **사용 가능한 명령어:**
+- "리포트" 또는 "근태리포트" - 최근 근태 리포트 보기
+- "휴가" 또는 "휴가현황" - 최근 휴가 현황 보기
+- "도움말" - 명령어 목록 보기
+
 ✅ 알림을 받을 준비가 완료되었습니다!
 `.trim();
+}
 
-  await sendActivity(activity, {
-    type: 'message',
-    text: replyText,
-    from: activity.recipient,
-    recipient: activity.from,
-    conversation: activity.conversation,
-  });
+/**
+ * 도움말 메시지
+ */
+function getHelpMessage(): string {
+  return `
+**📋 사용 가능한 명령어**
+
+🔍 **문서 검색:**
+- "리포트" 또는 "근태리포트" - 최근 근태 리포트 목록
+- "휴가" 또는 "휴가현황" - 최근 휴가 현황 목록
+
+ℹ️ **정보:**
+- "도움말" 또는 "help" - 이 도움말 표시
+
+⏰ **자동 알림:**
+이 봇은 다음과 같은 경우에 자동으로 알림을 보냅니다:
+- 출근 체크 누락 (11:05, 11:30)
+- 퇴근 체크 누락 (20:30, 22:00)
+- 당일 누적 요약 (22:10)
+`.trim();
+}
+
+/**
+ * 근태 리포트 명령어 처리
+ */
+async function handleAttendanceReportCommand(context: InvocationContext): Promise<string> {
+  try {
+    context.log('[BotMessages] 근태 리포트 조회 시작');
+
+    // SharePoint에서 최근 근태 리포트 파일 조회
+    const files = await sharepointClient.listFiles('근태 리포트');
+
+    if (files.length === 0) {
+      return `
+📊 **근태 리포트**
+
+현재 저장된 근태 리포트가 없습니다.
+
+리포트는 매일 자동으로 생성되어 SharePoint에 저장됩니다.
+`.trim();
+    }
+
+    // 최근 5개 파일만 표시
+    const recentFiles = files
+      .sort((a, b) => {
+        const dateA = new Date(a.lastModifiedDateTime || 0);
+        const dateB = new Date(b.lastModifiedDateTime || 0);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 5);
+
+    const siteUrl = 'https://itmoou.sharepoint.com/sites/itmoou-groupware';
+    const folderUrl = `${siteUrl}/Shared%20Documents/%EA%B7%BC%ED%83%9C%20%EB%A6%AC%ED%8F%AC%ED%8A%B8`;
+
+    let message = `
+📊 **최근 근태 리포트**
+
+`;
+
+    recentFiles.forEach((file, idx) => {
+      const fileName = file.name || '알 수 없음';
+      const fileUrl = file.webUrl || folderUrl;
+      message += `${idx + 1}. [${fileName}](${fileUrl})\n`;
+    });
+
+    message += `\n📁 [SharePoint 폴더 열기](${folderUrl})`;
+
+    return message.trim();
+  } catch (error: any) {
+    context.error('[BotMessages] 근태 리포트 조회 실패:', error);
+    return `
+❌ **오류**
+
+근태 리포트를 조회하는 중 오류가 발생했습니다.
+잠시 후 다시 시도해주세요.
+`.trim();
+  }
+}
+
+/**
+ * 휴가 현황 명령어 처리
+ */
+async function handleVacationReportCommand(context: InvocationContext): Promise<string> {
+  try {
+    context.log('[BotMessages] 휴가 현황 조회 시작');
+
+    // SharePoint에서 최근 휴가 현황 파일 조회
+    const files = await sharepointClient.listFiles('휴가 현황');
+
+    if (files.length === 0) {
+      return `
+📅 **휴가 현황**
+
+현재 저장된 휴가 현황이 없습니다.
+
+휴가 현황은 매주 월요일 자동으로 생성되어 SharePoint에 저장됩니다.
+`.trim();
+    }
+
+    // 최근 5개 파일만 표시
+    const recentFiles = files
+      .sort((a, b) => {
+        const dateA = new Date(a.lastModifiedDateTime || 0);
+        const dateB = new Date(b.lastModifiedDateTime || 0);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 5);
+
+    const siteUrl = 'https://itmoou.sharepoint.com/sites/itmoou-groupware';
+    const folderUrl = `${siteUrl}/Shared%20Documents/%ED%9C%B4%EA%B0%80%20%ED%98%84%ED%99%A9`;
+
+    let message = `
+📅 **최근 휴가 현황**
+
+`;
+
+    recentFiles.forEach((file, idx) => {
+      const fileName = file.name || '알 수 없음';
+      const fileUrl = file.webUrl || folderUrl;
+      message += `${idx + 1}. [${fileName}](${fileUrl})\n`;
+    });
+
+    message += `\n📁 [SharePoint 폴더 열기](${folderUrl})`;
+
+    return message.trim();
+  } catch (error: any) {
+    context.error('[BotMessages] 휴가 현황 조회 실패:', error);
+    return `
+❌ **오류**
+
+휴가 현황을 조회하는 중 오류가 발생했습니다.
+잠시 후 다시 시도해주세요.
+`.trim();
+  }
 }
 
 async function handleConversationUpdate(
