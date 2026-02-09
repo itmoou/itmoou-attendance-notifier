@@ -145,21 +145,23 @@ class FlexClient {
       console.log(`[FlexClient] 근태 기록 응답 데이터:`, JSON.stringify(response.data, null, 2));
 
       // Flex API는 배열 또는 객체를 반환할 수 있음
-      let schedules: FlexWorkSchedule[] = [];
+      let rawSchedules: any[] = [];
 
       if (Array.isArray(response.data)) {
         // 응답이 배열인 경우
-        schedules = response.data;
+        rawSchedules = response.data;
       } else if (response.data && typeof response.data === 'object') {
         // 응답이 객체인 경우 (예: { schedules: [...], data: [...], items: [...], workSchedules: [...] })
         if (response.data.schedules && Array.isArray(response.data.schedules)) {
-          schedules = response.data.schedules;
+          rawSchedules = response.data.schedules;
         } else if (response.data.workSchedules && Array.isArray(response.data.workSchedules)) {
-          schedules = response.data.workSchedules;
+          rawSchedules = response.data.workSchedules;
+        } else if (response.data.userWorkSchedules && Array.isArray(response.data.userWorkSchedules)) {
+          rawSchedules = response.data.userWorkSchedules;
         } else if (response.data.data && Array.isArray(response.data.data)) {
-          schedules = response.data.data;
+          rawSchedules = response.data.data;
         } else if (response.data.items && Array.isArray(response.data.items)) {
-          schedules = response.data.items;
+          rawSchedules = response.data.items;
         } else {
           // 객체의 모든 키 확인
           const keys = Object.keys(response.data);
@@ -168,12 +170,31 @@ class FlexClient {
           // 첫 번째 배열 속성 사용
           for (const key of keys) {
             if (Array.isArray(response.data[key])) {
-              schedules = response.data[key];
+              rawSchedules = response.data[key];
               console.log(`[FlexClient] '${key}' 속성을 근태 데이터로 사용`);
               break;
             }
           }
         }
+      }
+
+      // Flex API 응답 구조 평탄화
+      // 실제 API는 { employeeNumber, days: [{ date, workBlocks }] } 구조를 사용
+      let schedules: FlexWorkSchedule[] = [];
+
+      if (rawSchedules.length > 0 && rawSchedules[0].days && Array.isArray(rawSchedules[0].days)) {
+        // 중첩 구조: [{ employeeNumber, days: [{ date, workBlocks }] }]
+        console.log(`[FlexClient] 중첩된 days 구조 감지, 평탄화 중...`);
+        schedules = rawSchedules.flatMap((user: any) =>
+          user.days.map((day: any) => ({
+            employeeNumber: user.employeeNumber,
+            date: day.date,
+            workBlocks: day.workBlocks || [],
+          }))
+        );
+      } else {
+        // 평면 구조: [{ employeeNumber, date, workBlocks }]
+        schedules = rawSchedules;
       }
 
       console.log(`[FlexClient] 근태 기록 조회 완료: ${schedules.length}건`);
@@ -211,33 +232,53 @@ class FlexClient {
       console.log(`[FlexClient] 휴가 정보 응답 데이터:`, JSON.stringify(response.data, null, 2));
 
       // Flex API는 배열 또는 객체를 반환할 수 있음
-      let timeOffs: FlexTimeOffUse[] = [];
-      
+      let rawTimeOffs: any[] = [];
+
       if (Array.isArray(response.data)) {
         // 응답이 배열인 경우
-        timeOffs = response.data;
+        rawTimeOffs = response.data;
       } else if (response.data && typeof response.data === 'object') {
         // 응답이 객체인 경우 (예: { timeOffs: [...], data: [...], items: [...] })
         if (response.data.timeOffs && Array.isArray(response.data.timeOffs)) {
-          timeOffs = response.data.timeOffs;
+          rawTimeOffs = response.data.timeOffs;
+        } else if (response.data.userTimeOffUses && Array.isArray(response.data.userTimeOffUses)) {
+          rawTimeOffs = response.data.userTimeOffUses;
         } else if (response.data.data && Array.isArray(response.data.data)) {
-          timeOffs = response.data.data;
+          rawTimeOffs = response.data.data;
         } else if (response.data.items && Array.isArray(response.data.items)) {
-          timeOffs = response.data.items;
+          rawTimeOffs = response.data.items;
         } else {
           // 객체의 모든 키 확인
           const keys = Object.keys(response.data);
           console.warn(`[FlexClient] 예상하지 못한 응답 구조. 사용 가능한 키: ${keys.join(', ')}`);
-          
+
           // 첫 번째 배열 속성 사용
           for (const key of keys) {
             if (Array.isArray(response.data[key])) {
-              timeOffs = response.data[key];
+              rawTimeOffs = response.data[key];
               console.log(`[FlexClient] '${key}' 속성을 휴가 데이터로 사용`);
               break;
             }
           }
         }
+      }
+
+      // Flex API 응답 구조 평탄화
+      // 실제 API는 { employeeNumber, uses: [{ timeOffType, startDate, endDate, ... }] } 구조를 사용
+      let timeOffs: FlexTimeOffUse[] = [];
+
+      if (rawTimeOffs.length > 0 && rawTimeOffs[0].uses && Array.isArray(rawTimeOffs[0].uses)) {
+        // 중첩 구조: [{ employeeNumber, uses: [{ timeOffType, startDate, ... }] }]
+        console.log(`[FlexClient] 중첩된 uses 구조 감지, 평탄화 중...`);
+        timeOffs = rawTimeOffs.flatMap((user: any) =>
+          user.uses.map((use: any) => ({
+            ...use,
+            employeeNumber: user.employeeNumber,
+          }))
+        );
+      } else {
+        // 평면 구조: [{ employeeNumber, timeOffType, startDate, ... }]
+        timeOffs = rawTimeOffs;
       }
 
       console.log(`[FlexClient] 휴가 정보 조회 완료: ${timeOffs.length}건`);
