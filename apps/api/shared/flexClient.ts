@@ -140,7 +140,42 @@ class FlexClient {
         }
       );
 
-      const schedules: FlexWorkSchedule[] = response.data || [];
+      // Flex API 응답 구조 디버깅
+      console.log(`[FlexClient] 근태 기록 응답 타입: ${typeof response.data}`);
+      console.log(`[FlexClient] 근태 기록 응답 데이터:`, JSON.stringify(response.data, null, 2));
+
+      // Flex API는 배열 또는 객체를 반환할 수 있음
+      let schedules: FlexWorkSchedule[] = [];
+
+      if (Array.isArray(response.data)) {
+        // 응답이 배열인 경우
+        schedules = response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // 응답이 객체인 경우 (예: { schedules: [...], data: [...], items: [...], workSchedules: [...] })
+        if (response.data.schedules && Array.isArray(response.data.schedules)) {
+          schedules = response.data.schedules;
+        } else if (response.data.workSchedules && Array.isArray(response.data.workSchedules)) {
+          schedules = response.data.workSchedules;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          schedules = response.data.data;
+        } else if (response.data.items && Array.isArray(response.data.items)) {
+          schedules = response.data.items;
+        } else {
+          // 객체의 모든 키 확인
+          const keys = Object.keys(response.data);
+          console.warn(`[FlexClient] 예상하지 못한 응답 구조. 사용 가능한 키: ${keys.join(', ')}`);
+
+          // 첫 번째 배열 속성 사용
+          for (const key of keys) {
+            if (Array.isArray(response.data[key])) {
+              schedules = response.data[key];
+              console.log(`[FlexClient] '${key}' 속성을 근태 데이터로 사용`);
+              break;
+            }
+          }
+        }
+      }
+
       console.log(`[FlexClient] 근태 기록 조회 완료: ${schedules.length}건`);
       return schedules;
     } catch (error) {
