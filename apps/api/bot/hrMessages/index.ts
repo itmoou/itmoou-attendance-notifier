@@ -106,6 +106,55 @@ function verifyActivitySignature(req: HttpRequest): boolean {
 }
 
 /**
+ * 사용자 권한 확인
+ * HR_BOT_ALLOWED_USERS 환경 변수에 설정된 사용자만 접근 허용
+ */
+function isUserAuthorized(activity: Activity, context: InvocationContext): boolean {
+  const allowedUsersEnv = process.env.HR_BOT_ALLOWED_USERS || '';
+
+  if (!allowedUsersEnv) {
+    context.warn('[HRBotMessages] HR_BOT_ALLOWED_USERS 환경 변수가 설정되지 않았습니다. 모든 사용자 허용.');
+    return true;
+  }
+
+  // 쉼표로 구분된 이메일 목록 (예: user1@itmoou.com,user2@itmoou.com)
+  const allowedUsers = allowedUsersEnv.split(',').map(u => u.trim().toLowerCase());
+
+  // 사용자 식별 정보 추출
+  const aadObjectId = activity.from?.aadObjectId?.toLowerCase();
+  const userName = activity.from?.name?.toLowerCase();
+
+  // channelData에서 이메일 추출 시도 (Teams의 경우)
+  let userEmail: string | undefined;
+  try {
+    if (activity.channelData?.user?.email) {
+      userEmail = activity.channelData.user.email.toLowerCase();
+    } else if (activity.channelData?.teamsChannelData?.user?.email) {
+      userEmail = activity.channelData.teamsChannelData.user.email.toLowerCase();
+    }
+  } catch (e) {
+    context.log('[HRBotMessages] channelData에서 이메일 추출 실패');
+  }
+
+  context.log(`[HRBotMessages] 사용자 확인 - AAD: ${aadObjectId}, Email: ${userEmail}, Name: ${userName}`);
+
+  // AAD Object ID, 이메일, 이름 중 하나라도 허용 목록에 있으면 승인
+  const isAuthorized = allowedUsers.some(allowed => {
+    return (
+      (aadObjectId && aadObjectId.includes(allowed)) ||
+      (userEmail && (userEmail === allowed || userEmail.includes(allowed))) ||
+      (userName && userName.includes(allowed))
+    );
+  });
+
+  if (!isAuthorized) {
+    context.warn(`[HRBotMessages] 권한 없는 사용자 접근 시도 - AAD: ${aadObjectId}, Email: ${userEmail}`);
+  }
+
+  return isAuthorized;
+}
+
+/**
  * Bot Framework에 응답 전송
  */
 async function sendActivity(activity: Activity, replyActivity: Partial<Activity>): Promise<void> {
@@ -200,6 +249,26 @@ async function handleMessage(
 
   context.log(`[HRBotMessages] 메시지: "${text}" from ${userUpn}`);
 
+  // 사용자 권한 확인
+  if (!isUserAuthorized(activity, context)) {
+    const unauthorizedText = `
+🔒 **접근 권한이 없습니다**
+
+죄송합니다. 이 봇은 HR 관리자만 사용할 수 있습니다.
+
+접근 권한이 필요하시면 IT 관리자에게 문의해주세요.
+`.trim();
+
+    await sendActivity(activity, {
+      type: 'message',
+      text: unauthorizedText,
+      from: activity.recipient,
+      recipient: activity.from,
+      conversation: activity.conversation,
+    });
+    return;
+  }
+
   const conversationRef = getConversationReference(activity);
 
   if (aadObjectId || userUpn || teamsUserId) {
@@ -245,6 +314,26 @@ async function handleConversationUpdate(
   for (const member of membersAdded) {
     if (member.id !== botId) {
       context.log(`[HRBotMessages] 새 사용자: ${member.name}`);
+
+      // 사용자 권한 확인
+      if (!isUserAuthorized(activity, context)) {
+        const unauthorizedText = `
+🔒 **접근 권한이 없습니다**
+
+죄송합니다. 이 봇은 HR 관리자만 사용할 수 있습니다.
+
+접근 권한이 필요하시면 IT 관리자에게 문의해주세요.
+`.trim();
+
+        await sendActivity(activity, {
+          type: 'message',
+          text: unauthorizedText,
+          from: activity.recipient,
+          recipient: activity.from,
+          conversation: activity.conversation,
+        });
+        return;
+      }
 
       const aadObjectId = activity.from?.aadObjectId || null;
       const teamsUserId = activity.from?.id || null;
