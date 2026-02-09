@@ -14,6 +14,7 @@ import './apps/api/test/sendTestEmail/index';
 import './apps/api/test/testFlexToken/index';
 import './apps/api/test/testFlexAuth/index';
 import './apps/api/test/setupSharePoint/index';
+import './apps/api/test/testCheckIn/index';
 import './apps/api/http/vacationApproved/index';
 import './apps/api/http/vacationCalendar/index';
 
