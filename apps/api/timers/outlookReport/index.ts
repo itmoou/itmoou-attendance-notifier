@@ -11,6 +11,7 @@
 import { app, InvocationContext, Timer } from '@azure/functions';
 import { getFlexClient } from '../../shared/flexClient';
 import { getOutlookClient } from '../../shared/outlookClient';
+import sharepointClient from '../../shared/sharepointClient';
 import {
   getAllEmployeeMaps,
   ensureEmployeeMapTableExists,
@@ -131,6 +132,16 @@ async function outlookReportHandler(
     );
 
     context.log(`[OutlookReport] 리포트 발송 완료: ${hrEmails.join(', ')}`);
+
+    // 7. SharePoint에 리포트 백업
+    try {
+      const fileName = `근태리포트_${yesterday}.html`;
+      await sharepointClient.uploadFile('근태 리포트', fileName, reportHtml);
+      context.log(`[OutlookReport] SharePoint 백업 완료: ${fileName}`);
+    } catch (sharePointError) {
+      context.error('[OutlookReport] SharePoint 백업 실패:', sharePointError);
+      // SharePoint 백업 실패해도 이메일은 발송되었으므로 에러를 throw하지 않음
+    }
   } catch (error) {
     context.error('[OutlookReport] 처리 중 오류:', error);
     throw error;

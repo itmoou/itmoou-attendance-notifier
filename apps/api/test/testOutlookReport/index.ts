@@ -6,6 +6,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { getFlexClient } from '../../shared/flexClient';
 import { getOutlookClient } from '../../shared/outlookClient';
+import sharepointClient from '../../shared/sharepointClient';
 import {
   getAllEmployeeMaps,
   ensureEmployeeMapTableExists,
@@ -203,9 +204,24 @@ async function testOutlookReportHandler(
 
     context.log(`[Test] 리포트 발송 완료: ${hrEmails.join(', ')}`);
 
-    results.success = true;
-    results.message = '이메일 리포트 테스트 완료';
     results.steps.emailSent = true;
+
+    // SharePoint에 리포트 백업
+    try {
+      const fileName = `근태리포트_${today}_테스트.html`;
+      await sharepointClient.uploadFile('근태 리포트', fileName, reportHtml);
+      context.log(`[Test] SharePoint 백업 완료: ${fileName}`);
+      results.steps.sharePointBackup = true;
+      results.steps.sharePointFileName = fileName;
+    } catch (sharePointError: any) {
+      context.error('[Test] SharePoint 백업 실패:', sharePointError);
+      results.steps.sharePointBackup = false;
+      results.steps.sharePointError = sharePointError.message;
+      // SharePoint 백업 실패해도 이메일은 발송되었으므로 계속 진행
+    }
+
+    results.success = true;
+    results.message = '이메일 리포트 및 SharePoint 백업 테스트 완료';
 
     return {
       status: 200,
