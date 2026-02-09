@@ -31,13 +31,18 @@ function getBotAdapter(): CloudAdapter {
     return botAdapter;
   }
 
-  const { appId, appPassword } = validateBotEnvs();
+  const { appId, appPassword, tenantId } = validateBotEnvs();
+
+  // Tenant ID가 있으면 SingleTenant, 없으면 MultiTenant
+  const appType = tenantId ? 'SingleTenant' : 'MultiTenant';
+
+  console.log(`[TeamsBot] Bot 초기화: ${appType} (Tenant: ${tenantId || 'N/A'})`);
 
   const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
     MicrosoftAppId: appId,
     MicrosoftAppPassword: appPassword,
-    MicrosoftAppType: 'MultiTenant',
-    MicrosoftAppTenantId: '',
+    MicrosoftAppType: appType,
+    MicrosoftAppTenantId: tenantId || '',
   });
 
   botAdapter = new CloudAdapter(botFrameworkAuthentication);
