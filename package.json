@@ -4,8 +4,7 @@
   "description": "Flex OpenAPI + Microsoft Teams DM + Outlook 기반 근태 누락 알림 시스템",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && find apps -name 'function.json' -exec cp --parents {} dist/ \\;",
-    "build:win": "tsc && powershell -Command \"Get-ChildItem -Path apps -Filter function.json -Recurse | ForEach-Object { $dest = $_.FullName.Replace((Get-Location).Path, (Join-Path (Get-Location).Path 'dist')); New-Item -ItemType File -Path $dest -Force | Out-Null; Copy-Item $_.FullName $dest -Force }\"",
+    "build": "tsc && node scripts/copy-function-json.js",
     "watch": "tsc --watch",
     "prestart": "npm run build",
     "start": "func start",
