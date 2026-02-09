@@ -17,6 +17,7 @@ import './apps/api/test/setupSharePoint/index';
 import './apps/api/test/testCheckIn/index';
 import './apps/api/test/checkConversations/index';
 import './apps/api/test/testOutlookReport/index';
+import './apps/api/test/testWeeklyVacation/index';
 import './apps/api/http/vacationApproved/index';
 import './apps/api/http/vacationCalendar/index';
 
@@ -25,6 +26,7 @@ import './apps/api/timers/checkCheckIn/index';
 import './apps/api/timers/checkCheckOut/index';
 import './apps/api/timers/dailySummary/index';
 import './apps/api/timers/outlookReport/index';
+import './apps/api/timers/weeklyVacationReport/index';
 import './apps/api/timers/vacationAnnouncement/index';
 import './apps/api/timers/vacationReminder/index';
 
