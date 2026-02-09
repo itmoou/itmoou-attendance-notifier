@@ -1,0 +1,68 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "7c8f2e3d-5a4b-4c6d-8e9f-1a2b3c4d5e6f",
+  "packageName": "com.itmoou.hr-bot",
+  "developer": {
+    "name": "ITMOOU",
+    "websiteUrl": "https://itmoou.com",
+    "privacyUrl": "https://itmoou.com/privacy",
+    "termsOfUseUrl": "https://itmoou.com/terms"
+  },
+  "name": {
+    "short": "HR 관리 봇",
+    "full": "ITMOOU HR 문서 관리 봇"
+  },
+  "description": {
+    "short": "HR 관리자 전용 문서 관리 봇",
+    "full": "HR 관리자가 근태 리포트와 휴가 현황을 조회할 수 있는 봇입니다. 권한이 부여된 사용자만 접근할 수 있습니다."
+  },
+  "icons": {
+    "color": "icon-color.png",
+    "outline": "icon-outline.png"
+  },
+  "accentColor": "#FF6B6B",
+  "bots": [
+    {
+      "botId": "3b1bc06d-6a4a-4596-aae7-e8cb55844a6b",
+      "scopes": [
+        "personal"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal"
+          ],
+          "commands": [
+            {
+              "title": "리포트",
+              "description": "최근 근태 리포트 보기"
+            },
+            {
+              "title": "휴가",
+              "description": "최근 휴가 현황 보기"
+            },
+            {
+              "title": "도움말",
+              "description": "명령어 목록 보기"
+            },
+            {
+              "title": "권한목록",
+              "description": "권한 있는 사용자 목록 (관리자 전용)"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "itmoou-attendance-func-ate3csagf3c4hyas.koreacentral-01.azurewebsites.net"
+  ]
+}
