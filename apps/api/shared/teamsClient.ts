@@ -33,15 +33,12 @@ function getBotAdapter(): CloudAdapter {
 
   const { appId, appPassword } = validateBotEnvs();
 
-  const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication(
-    {},
-    {
-      MicrosoftAppId: appId,
-      MicrosoftAppPassword: appPassword,
-      MicrosoftAppType: 'MultiTenant',
-      MicrosoftAppTenantId: '',
-    } as any // Type workaround
-  );
+  const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
+    MicrosoftAppId: appId,
+    MicrosoftAppPassword: appPassword,
+    MicrosoftAppType: 'MultiTenant',
+    MicrosoftAppTenantId: '',
+  });
 
   botAdapter = new CloudAdapter(botFrameworkAuthentication);
   return botAdapter;
