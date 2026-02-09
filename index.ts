@@ -10,6 +10,7 @@
 
 // HTTP Functions
 import './apps/api/bot/messages/index';
+import './apps/api/bot/hrMessages/index';
 import './apps/api/test/sendTestEmail/index';
 import './apps/api/test/testFlexToken/index';
 import './apps/api/test/testFlexAuth/index';
