@@ -3,7 +3,7 @@
  * Azure Table Storage를 사용하여 HR Bot 접근 권한 관리
  */
 
-import { TableClient, AzureNamedKeyCredential } from '@azure/data-tables';
+import { TableClient } from '@azure/data-tables';
 
 interface HRBotPermission {
   partitionKey: string;
@@ -13,25 +13,19 @@ interface HRBotPermission {
   grantedAt: Date;
 }
 
-const ACCOUNT_NAME = process.env.AZURE_STORAGE_ACCOUNT_NAME || '';
-const ACCOUNT_KEY = process.env.AZURE_STORAGE_ACCOUNT_KEY || '';
 const TABLE_NAME = 'HRBotPermissions';
-
-let tableClient: TableClient | null = null;
 
 /**
  * Table Client 초기화
  */
 function getTableClient(): TableClient {
-  if (!tableClient) {
-    const credential = new AzureNamedKeyCredential(ACCOUNT_NAME, ACCOUNT_KEY);
-    tableClient = new TableClient(
-      `https://${ACCOUNT_NAME}.table.core.windows.net`,
-      TABLE_NAME,
-      credential
-    );
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+  if (!connectionString) {
+    throw new Error('AZURE_STORAGE_CONNECTION_STRING 환경변수가 설정되지 않았습니다.');
   }
-  return tableClient;
+
+  return TableClient.fromConnectionString(connectionString, TABLE_NAME);
 }
 
 /**
