@@ -1,0 +1,25 @@
+<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+  <!-- 주황색 원형 배경 -->
+  <circle cx="96" cy="96" r="88" fill="#FF7043"/>
+
+  <!-- 클립보드 본체 (흰색) -->
+  <rect x="61" y="56" width="70" height="90" rx="8" fill="white"/>
+
+  <!-- 클립보드 상단 클립 (진한 회색) -->
+  <rect x="81" y="50" width="30" height="12" rx="4" fill="#455A64"/>
+
+  <!-- 체크리스트 항목 1 -->
+  <circle cx="77" cy="85" r="5" fill="#FF5722"/>
+  <path d="M 75 85 L 76.5 86.5 L 79 83.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <rect x="88" y="82" width="30" height="6" rx="2" fill="#BDBDBD"/>
+
+  <!-- 체크리스트 항목 2 -->
+  <circle cx="77" cy="105" r="5" fill="#FF5722"/>
+  <path d="M 75 105 L 76.5 106.5 L 79 103.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <rect x="88" y="102" width="30" height="6" rx="2" fill="#BDBDBD"/>
+
+  <!-- 체크리스트 항목 3 -->
+  <circle cx="77" cy="125" r="5" fill="#FF5722"/>
+  <path d="M 75 125 L 76.5 126.5 L 79 123.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <rect x="88" y="122" width="30" height="6" rx="2" fill="#BDBDBD"/>
+</svg>
