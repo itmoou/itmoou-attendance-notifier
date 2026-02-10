@@ -19,6 +19,7 @@ import './apps/api/test/testCheckIn/index';
 import './apps/api/test/checkConversations/index';
 import './apps/api/test/testOutlookReport/index';
 import './apps/api/test/testWeeklyVacation/index';
+import './apps/api/test/testCalendarNotify/index';
 import './apps/api/http/vacationApproved/index';
 import './apps/api/http/vacationCalendar/index';
 
@@ -30,6 +31,7 @@ import './apps/api/timers/outlookReport/index';
 import './apps/api/timers/weeklyVacationReport/index';
 import './apps/api/timers/vacationAnnouncement/index';
 import './apps/api/timers/vacationReminder/index';
+import './apps/api/timers/dailyCalendarNotify/index';
 
 // Note: 함수 등록은 각 파일에서 app.http(), app.timer() 호출로 완료됩니다.
 // 이 파일은 단지 런타임이 모든 함수 파일을 로드하도록 보장합니다.
