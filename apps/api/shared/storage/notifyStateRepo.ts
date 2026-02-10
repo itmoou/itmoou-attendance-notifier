@@ -20,6 +20,7 @@ interface NotifyStateEntity extends TableEntity {
   sentCheckOut2030?: boolean;
   sentCheckOut2200?: boolean;
   sentDailySummary2210?: boolean;
+  sentMeetingReminder?: boolean;
   lastUpdated?: string; // ISO timestamp
 }
 
@@ -28,7 +29,8 @@ export type NotifyType =
   | 'checkIn1130'
   | 'checkOut2030'
   | 'checkOut2200'
-  | 'dailySummary2210';
+  | 'dailySummary2210'
+  | 'meetingReminder';
 
 /**
  * Table Storage 클라이언트 생성
