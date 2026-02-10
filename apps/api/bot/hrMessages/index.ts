@@ -116,7 +116,7 @@ function verifyActivitySignature(req: HttpRequest): boolean {
 /**
  * 사용자 이메일 추출
  */
-function getUserEmail(activity: Activity, context: InvocationContext): string | null {
+async function getUserEmail(activity: Activity, context: InvocationContext): Promise<string | null> {
   // channelData에서 이메일 추출 시도 (Teams의 경우)
   let userEmail: string | null = null;
   try {
@@ -129,6 +129,34 @@ function getUserEmail(activity: Activity, context: InvocationContext): string | 
     context.log('[HRBotMessages] channelData에서 이메일 추출 실패');
   }
 
+  // channelData에 이메일이 없으면 AAD Object ID로 Graph API 조회
+  if (!userEmail && activity.from?.aadObjectId) {
+    try {
+      const { getGraphAccessToken } = await import('../../shared/graphClient');
+      const token = await getGraphAccessToken();
+
+      const response = await axios.get(
+        `https://graph.microsoft.com/v1.0/users/${activity.from.aadObjectId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.mail) {
+        userEmail = response.data.mail.toLowerCase();
+        context.log(`[HRBotMessages] Graph API로 이메일 조회: ${userEmail}`);
+      } else if (response.data.userPrincipalName) {
+        userEmail = response.data.userPrincipalName.toLowerCase();
+        context.log(`[HRBotMessages] Graph API로 UPN 조회: ${userEmail}`);
+      }
+    } catch (error) {
+      context.error('[HRBotMessages] Graph API 이메일 조회 실패:', error);
+    }
+  }
+
   return userEmail;
 }
 
@@ -138,7 +166,7 @@ function getUserEmail(activity: Activity, context: InvocationContext): string | 
  * 2. Table Storage 권한 체크
  */
 async function isUserAuthorized(activity: Activity, context: InvocationContext): Promise<boolean> {
-  const userEmail = getUserEmail(activity, context);
+  const userEmail = await getUserEmail(activity, context);
   const aadObjectId = activity.from?.aadObjectId?.toLowerCase();
   const userName = activity.from?.name?.toLowerCase();
 
@@ -256,7 +284,7 @@ async function handleMessage(
   const aadObjectId = activity.from?.aadObjectId || null;
   const teamsUserId = activity.from?.id || null;
   const userUpn = aadObjectId;
-  const userEmail = getUserEmail(activity, context);
+  const userEmail = await getUserEmail(activity, context);
 
   context.log(`[HRBotMessages] 메시지: "${text}" from ${userEmail || userUpn}`);
 
@@ -367,7 +395,7 @@ async function handleConversationUpdate(
       const aadObjectId = activity.from?.aadObjectId || null;
       const teamsUserId = activity.from?.id || null;
       const userUpn = aadObjectId;
-      const userEmail = getUserEmail(activity, context);
+      const userEmail = await getUserEmail(activity, context);
 
       const conversationRef = getConversationReference(activity);
 
