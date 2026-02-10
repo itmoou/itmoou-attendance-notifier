@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "id": "7c8f2e3d-5a4b-4c6d-8e9f-1a2b3c4d5e6f",
   "packageName": "com.itmoou.hr-bot",
   "developer": {
@@ -22,7 +22,7 @@
     "color": "icon-color.png",
     "outline": "icon-outline.png"
   },
-  "accentColor": "#FF6B6B",
+  "accentColor": "#FF7043",
   "bots": [
     {
       "botId": "3b1bc06d-6a4a-4596-aae7-e8cb55844a6b",
