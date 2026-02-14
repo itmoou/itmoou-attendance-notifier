@@ -11,6 +11,7 @@
 
 import axios from 'axios';
 import { validateFlexEnvs } from './utils/envUtil';
+import { getRefreshToken, saveRefreshToken } from './storage/flexTokenRepo';
 
 /**
  * Access Token 캐시
@@ -40,8 +41,26 @@ export async function getFlexAccessToken(): Promise<string> {
 
   // Access Token 재발급
   console.log('[TokenManager] Access Token 재발급 시도...');
-  
-  const { refreshToken, tokenUrl } = validateFlexEnvs();
+
+  // Refresh Token 조회: Storage 우선, 환경변수 fallback
+  let refreshToken: string;
+  try {
+    const storedToken = await getRefreshToken();
+    if (storedToken) {
+      console.log('[TokenManager] Storage에서 Refresh Token 사용');
+      refreshToken = storedToken;
+    } else {
+      console.log('[TokenManager] 환경변수에서 Refresh Token 사용');
+      const { refreshToken: envToken } = validateFlexEnvs();
+      refreshToken = envToken;
+    }
+  } catch (error: any) {
+    console.warn('[TokenManager] Storage 조회 실패, 환경변수 사용:', error.message);
+    const { refreshToken: envToken } = validateFlexEnvs();
+    refreshToken = envToken;
+  }
+
+  const { tokenUrl } = validateFlexEnvs();
 
   try {
     console.log('[TokenManager] Token URL:', tokenUrl);
@@ -79,15 +98,21 @@ export async function getFlexAccessToken(): Promise<string> {
 
     console.log(`[TokenManager] Access Token 재발급 완료 (유효기간: ${expires_in}초)`);
     
-    // 새로운 Refresh Token이 있으면 경고 (환경변수 업데이트 필요)
+    // 새로운 Refresh Token이 있으면 자동으로 Storage에 저장
     if (newRefreshToken && newRefreshToken !== refreshToken) {
       console.warn('[TokenManager] ⚠️ 새로운 Refresh Token 발급됨!');
       console.warn('[TokenManager] 새 Refresh Token 앞 10자:', newRefreshToken.substring(0, 10) + '...');
-      console.warn('[TokenManager] Azure Portal에서 FLEX_REFRESH_TOKEN 환경변수를 업데이트하세요:');
-      console.warn('[TokenManager] Function App → Configuration → FLEX_REFRESH_TOKEN');
-      
-      // TODO: Azure Key Vault 또는 App Configuration을 통한 자동 업데이트 구현
-      // 현재는 수동으로 환경변수 업데이트 필요
+
+      try {
+        await saveRefreshToken(newRefreshToken, 'auto');
+        console.log('[TokenManager] ✅ 새 Refresh Token을 Storage에 자동 저장 완료');
+        console.log('[TokenManager] 다음 API 호출부터 새 토큰이 자동으로 사용됩니다');
+      } catch (saveError: any) {
+        console.error('[TokenManager] ❌ Storage 저장 실패:', saveError.message);
+        console.warn('[TokenManager] 수동으로 환경변수를 업데이트하세요:');
+        console.warn('[TokenManager] Azure Portal → Function App → Configuration → FLEX_REFRESH_TOKEN');
+        console.warn('[TokenManager] 새 Refresh Token:', newRefreshToken);
+      }
     } else {
       console.log('[TokenManager] Refresh Token 변경 없음 (재사용 가능)');
     }
